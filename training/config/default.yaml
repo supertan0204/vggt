@@ -12,6 +12,9 @@ logging:
   log_level_primary: DEBUG
   log_level_secondary: WARNING
   all_ranks: False
+  tensorboard_writer:
+    _target_: train_utils.tb_writer.TensorBoardLogger
+    path: ${logging.log_dir}/tensorboard
 
 checkpoint:
   save_dir: None
@@ -26,8 +29,10 @@ optim:
     _target_: torch.optim.AdamW
     lr: 1e-4
     weight_decay: 0.05
-  frozen_module_names: None # e.g., - "*backbone*"
-  frozen_module_dtype: None
+
+  frozen_module_names:
+      - "*aggregator*"  # example, freeze the aggregator
+
   amp:
     enabled: True
     amp_dtype: bfloat16
@@ -68,6 +73,10 @@ max_epochs: 100
 
 model:
   _target_: vggt.models.vggt.VGGT
+  enable_camera: True
+  enable_depth: True
+  enable_point: False
+  enable_track: False
 
 
 distributed:

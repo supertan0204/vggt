@@ -1,6 +1,22 @@
 import logging
 import os
 import copy
+import sys
+import atexit
+
+import functools
+from .general import safe_makedirs
+from iopath.common.file_io import g_pathmgr
+
+
+# cache the opened file object, so that different calls
+# with the same file name can safely write to the same file.
+@functools.lru_cache(maxsize=None)
+def _cached_log_stream(filename):
+    log_buffer_kb = 1 * 1024  # 1KB
+    io = g_pathmgr.open(filename, mode="a", buffering=log_buffer_kb)
+    atexit.register(io.close)
+    return io
 
 
 
@@ -22,7 +38,7 @@ def setup_logging(
     # get the filename if we want to log to the file as well
     log_filename = None
     if output_dir:
-        makedir(output_dir)
+        safe_makedirs(output_dir)
         if rank == 0:
             log_filename = f"{output_dir}/log.txt"
         elif all_ranks:
