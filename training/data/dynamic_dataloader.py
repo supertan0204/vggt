@@ -4,7 +4,7 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Callable, Iterable, Optional
+from typing import Callable, Optional
 
 from hydra.utils import instantiate
 import random
@@ -13,93 +13,82 @@ from torch.utils.data import DataLoader, Dataset, DistributedSampler, IterableDa
 
 from .worker_fn import get_worker_init_fn
 
-def build_dynamic_dataloader(
-    dataset: dict,
-    common_config: dict,
-    num_workers: int,
-    shuffle: bool,
-    pin_memory: bool,
-    drop_last: bool = True,
-    collate_fn: Optional[Callable] = None,
-    worker_init_fn: Optional[Callable] = None,
-    persistent_workers: bool = False,
-    seed: int = 42,
-    epoch: int = 0,
-    max_img_per_gpu: int = 48,
-):
-    """
-    Constructs a dynamic data loader with the specified configuration.
-
-    This data loader dynamically adjusts batch size, aspect ratio, and the number of images
-    during training.
-
-    Args:
-        dataset (dict): Configuration dictionary for the dataset to be instantiated.
-        common_config (dict): Shared configuration parameters.
-        num_workers (int): Number of subprocesses for data loading.
-        shuffle (bool): Whether to shuffle the dataset.
-        pin_memory (bool): If True, the data loader will copy Tensors into CUDA pinned memory.
-        drop_last (bool): If True, drop the last incomplete batch.
-        collate_fn (Optional[Callable]): Function to merge samples into a batch.
-        worker_init_fn (Optional[Callable]): Function to initialize workers.
-        persistent_workers (bool): If True, workers will not be shut down after a dataset has been consumed.
-        seed (int): Random seed for reproducibility.
-        epoch (int): Current epoch number.
-        max_img_per_gpu (int): Maximum number of images to fit in GPU memory.
-
-    Returns:
-        DataLoader: A PyTorch DataLoader configured with dynamic batch sampling.
-    """
-    print("Building dynamic dataloader with seed:", seed)
-    
-    # Instantiate the dataset
-    dataset_obj = instantiate(dataset, common_config=common_config, _recursive_=False)
-
-    # Extract aspect ratio and image number ranges from the configuration
-    aspect_ratio_range = common_config.aspects  # e.g., [0.5, 1.0]
-    image_num_range = common_config.img_nums    # e.g., [2, 24]
-    
-    # Validate the aspect ratio and image number ranges
-    if len(aspect_ratio_range) != 2 or aspect_ratio_range[0] >= aspect_ratio_range[1]:
-        raise ValueError(f"aspect_ratio_range must be [min, max] with min < max, got {aspect_ratio_range}")
-    if len(image_num_range) != 2 or image_num_range[0] < 1 or image_num_range[0] >= image_num_range[1]:
-        raise ValueError(f"image_num_range must be [min, max] with 1 <= min < max, got {image_num_range}")
-    
-    # Create samplers
-    sampler = DynamicDistributedSampler(dataset_obj, seed=seed, shuffle=shuffle)
-    batch_sampler = DynamicBatchSampler(
-        sampler, 
-        aspect_ratio_range, 
-        image_num_range, 
-        seed=seed,
-        max_img_per_gpu=max_img_per_gpu
-    )
-    
-    # Set the epoch for the sampler
-    sampler.set_epoch(epoch)
-    if hasattr(dataset_obj, "epoch"):
-        dataset_obj.epoch = epoch
-    if hasattr(dataset_obj, "set_epoch"):
-        dataset_obj.set_epoch(epoch)
-
-    # Create and return the dataloader
-    return DataLoader(
-        dataset_obj,
-        num_workers=num_workers,
-        pin_memory=pin_memory,
-        drop_last=drop_last,
-        batch_sampler=batch_sampler,
-        collate_fn=collate_fn,
-        persistent_workers=persistent_workers,
-        worker_init_fn=get_worker_init_fn(
+class DynamicTorchDataset(OmniDataset):
+    def __init__(
+        self,
+        dataset: dict,
+        common_config: dict,
+        num_workers: int,
+        shuffle: bool,
+        pin_memory: bool,
+        drop_last: bool = True,
+        collate_fn: Optional[Callable] = None,
+        worker_init_fn: Optional[Callable] = None,
+        persistent_workers: bool = False,
+        seed: int = 42,
+        max_img_per_gpu: int = 48,
+    ) -> None:
+        self.dataset_config = dataset
+        self.common_config = common_config
+        self.num_workers = num_workers
+        self.shuffle = shuffle
+        self.pin_memory = pin_memory
+        self.drop_last = drop_last
+        self.collate_fn = collate_fn
+        self.worker_init_fn = worker_init_fn
+        self.persistent_workers = persistent_workers
+        self.seed = seed
+        self.max_img_per_gpu = max_img_per_gpu
+        
+        # Instantiate the dataset
+        self.dataset = instantiate(dataset, common_config=common_config, _recursive_=False)
+        
+        # Extract aspect ratio and image number ranges from the configuration
+        self.aspect_ratio_range = common_config.aspects  # e.g., [0.5, 1.0]
+        self.image_num_range = common_config.img_nums    # e.g., [2, 24]
+        
+        # Validate the aspect ratio and image number ranges
+        if len(self.aspect_ratio_range) != 2 or self.aspect_ratio_range[0] >= self.aspect_ratio_range[1]:
+            raise ValueError(f"aspect_ratio_range must be [min, max] with min < max, got {self.aspect_ratio_range}")
+        if len(self.image_num_range) != 2 or self.image_num_range[0] < 1 or self.image_num_range[0] >= self.image_num_range[1]:
+            raise ValueError(f"image_num_range must be [min, max] with 1 <= min < max, got {self.image_num_range}")
+        
+        # Create samplers
+        self.sampler = DynamicDistributedSampler(self.dataset, seed=seed, shuffle=shuffle)
+        self.batch_sampler = DynamicBatchSampler(
+            self.sampler, 
+            self.aspect_ratio_range, 
+            self.image_num_range, 
             seed=seed,
-            num_workers=num_workers,
-            epoch=epoch,
-            worker_init_fn=worker_init_fn,
-        ),
-    )
+            max_img_per_gpu=max_img_per_gpu
+        )
 
+    def get_loader(self, epoch):
+        print("Building dynamic dataloader with seed:", self.seed)
+        
+        # Set the epoch for the sampler
+        self.sampler.set_epoch(epoch)
+        if hasattr(self.dataset, "epoch"):
+            self.dataset.epoch = epoch
+        if hasattr(self.dataset, "set_epoch"):
+            self.dataset.set_epoch(epoch)
 
+        # Create and return the dataloader
+        return DataLoader(
+            self.dataset,
+            num_workers=self.num_workers,
+            pin_memory=self.pin_memory,
+            drop_last=self.drop_last,
+            batch_sampler=self.batch_sampler,
+            collate_fn=self.collate_fn,
+            persistent_workers=self.persistent_workers,
+            worker_init_fn=get_worker_init_fn(
+                seed=self.seed,
+                num_workers=self.num_workers,
+                epoch=epoch,
+                worker_init_fn=self.worker_init_fn,
+            ),
+        )
 
 class DynamicBatchSampler(Sampler):
     """
