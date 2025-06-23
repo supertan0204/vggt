@@ -14,7 +14,9 @@ from abc import ABC, abstractmethod
 
 from .worker_fn import get_worker_init_fn
 
-class DynamicTorchDataset(ABC):
+# class DynamicTorchDataset(OmniDataset):
+# what is OmniDataset? It is not defined in the provided code...
+class DynamicTorchDataset(Dataset):
     def __init__(
         self,
         dataset: dict,
@@ -42,7 +44,8 @@ class DynamicTorchDataset(ABC):
         self.max_img_per_gpu = max_img_per_gpu
 
         # Instantiate the dataset
-        self.dataset = instantiate(dataset, common_config=common_config, _recursive_=False)
+        # self.dataset = instantiate(dataset, common_config=common_config, _recursive_=False)
+        self.dataset = instantiate(dataset)
 
         # Extract aspect ratio and image number ranges from the configuration
         self.aspect_ratio_range = common_config.augs.aspects  # e.g., [0.5, 1.0]

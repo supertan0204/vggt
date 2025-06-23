@@ -1,0 +1,43 @@
+{
+  "os":  "macOS-15.5-arm64-arm-64bit",
+  "python":  "CPython 3.9.21",
+  "startedAt":  "2025-06-09T07:02:10.165239Z",
+  "program":  "/Users/tanxiyang/Programs/vggt/finetune_gs.py",
+  "codePath":  "finetune_gs.py",
+  "git":  {
+    "remote":  "https://github.com/facebookresearch/vggt.git",
+    "commit":  "3f40c38529a0beac279ac1ebcaa1e403e826c79e"
+  },
+  "email":  "supertan0204@gmail.com",
+  "root":  "/Users/tanxiyang/Programs/vggt/outputs/2025-06-09/15-02-08",
+  "host":  "XIYANGTAN-MC0",
+  "executable":  "/opt/anaconda3/envs/fast3r/bin/python",
+  "cpu_count":  8,
+  "cpu_count_logical":  8,
+  "disk":  {
+    "/":  {
+      "total":  "494384795648",
+      "used":  "223502774272"
+    },
+    "/System/Volumes/Data":  {
+      "total":  "494384795648",
+      "used":  "223502774272"
+    }
+  },
+  "memory":  {
+    "total":  "17179869184"
+  },
+  "cpu":  {
+    "count":  8,
+    "countLogical":  8
+  },
+  "apple":  {
+    "name":  "Apple M3",
+    "ecpuCores":  4,
+    "pcpuCores":  4,
+    "gpuCores":  10,
+    "memoryGb":  16,
+    "swapTotalBytes":  "8589934592",
+    "ramTotalBytes":  "17179869184"
+  }
+}

@@ -49,10 +49,11 @@ from PIL import Image
 from datetime import timedelta
 
 #
-from train_utils.general import *
-from train_utils.logging import setup_logging
-from train_utils.distributed import get_machine_local_and_dist_rank
-from train_utils.freeze import freeze_modules
+from .train_utils.general import *
+from .train_utils.logging import setup_logging
+from .train_utils.distributed import get_machine_local_and_dist_rank
+from .train_utils.freeze import freeze_modules
+from training.data.dynamic_dataloader import *
 class Trainer:
     """
     Trainer supporting the DDP training strategies.
@@ -81,6 +82,7 @@ class Trainer:
         resume_checkpoint_path: Optional[str] = None,
         env_variables: Optional[Dict[str, Any]] = None,
         accum_steps: int = 1,
+        gs_mode: bool = True,
         **kwargs,
     ):
         self.resume_checkpoint_path = resume_checkpoint_path
@@ -93,6 +95,7 @@ class Trainer:
         self.loss_conf = loss
         self.logging_conf = logging
         # self.checkpoint_conf = TrainerCheckpointConf(**checkpoint).infer_missing()
+        self.checkpoint_conf = checkpoint
 
         # hyperparameters
         self.accum_steps = accum_steps
@@ -102,6 +105,7 @@ class Trainer:
         self.limit_train_batches = limit_train_batches
         self.limit_val_batches = limit_val_batches
         self.optim_conf = optim
+        self.gs_mode = gs_mode
 
         self.where = 0.0
         self.seed_value = seed_value
@@ -125,25 +129,47 @@ class Trainer:
         ), "Torch distributed needs to be initialized before calling the trainer."
 
         self._setup_components()  # Except Optimizer everything is setup here.
-        self._setup_dataloaders()
+        self._setup_dataloaders() # Should check if it is consistent with the original author!!
         self._move_to_device()
 
-        self.time_elapsed_meter = DurationMeter("Time Elapsed", self.device, ":.2f")
+        # self.time_elapsed_meter = DurationMeter("Time Elapsed", self.device, ":.2f")
 
-        if self.mode != "val":
-            self._construct_optimizers()
+        # if self.mode != "val":
+            # self._construct_optimizers()
 
         ################################
-        for _ in range(10):
-            print(f"Custom resume ckpt: {self.resume_checkpoint_path}")
-        if self.resume_checkpoint_path is not None:
-            self._load_resuming_checkpoint(self.resume_checkpoint_path)
+        # for _ in range(10):
+        #     print(f"Custom resume ckpt: {self.resume_checkpoint_path}")
+        # if self.resume_checkpoint_path is not None:
+        #     self._load_resuming_checkpoint(self.resume_checkpoint_path)
         ################################
 
-        self.load_checkpoint()
+        # self.load_checkpoint()
         self._setup_ddp_distributed_training(distributed, device)
 
         dist.barrier()
+    
+    def train_gs(self):
+        """
+        Main training loop for extracting 3D Gaussian Splatting features.
+        """
+        if self.gs_mode is not True:
+            raise ValueError("This method is only for GS mode. Please set gs_mode=True in the Trainer config.")
+        logging.info("Starting GS training loop...")
+
+        self.model.train()
+
+        # Core training loop
+        for epoch in range(self.max_epochs):
+            self.epoch = epoch
+            # set up dataloader for the current epoch
+            trainloader = self.dynamic_co3d_dataset.get_loader(epoch)
+            for item in trainloader:
+                print(item)
+                import pdb;pdb.set_trace()
+            
+        
+        
 
     def _setup_timers(self):
         """
@@ -269,7 +295,8 @@ class Trainer:
         if distributed_conf.comms_dtype is not None:  # noqa
             from torch.distributed.algorithms import ddp_comm_hooks
 
-            amp_type = get_amp_type(distributed_conf.comms_dtype)
+            # amp_type = get_amp_type(distributed_conf.comms_dtype)
+            amp_type = torch.bfloat16
             if amp_type == torch.bfloat16:
                 hook = ddp_comm_hooks.default_hooks.bf16_compress_hook
                 logging.info("Enabling bfloat16 grad communication")
@@ -286,13 +313,53 @@ class Trainer:
         )
         self.model.to(self.device)
 
-        if self.loss:
-            copy_data_to_device(self.loss, self.device)
-        if self.scaler:
-            copy_data_to_device(self.scaler, self.device)
-        for meter in self._get_meters().values():
-            meter.set_sync_device(self.device)
+        # if self.loss:
+        #     copy_data_to_device(self.loss, self.device)
+        # if self.scaler:
+        #     copy_data_to_device(self.scaler, self.device)
+        # for meter in self._get_meters().values():
+        #     meter.set_sync_device(self.device)
 
         print(
             f"Done moving components to device {self.device} and local rank {self.local_rank}."
         )
+    def _setup_dataloaders(self):
+        """
+        Initializes the dataloaders for training and validation.
+        """
+        logging.info("Setting up dataloaders...")
+
+        # self.train_data = instantiate(
+        #     self.data_conf.train.co3d
+        # )
+        # modify train_data's configs to fit dynamic dataloader API
+        common_config = self.data_conf.train.co3d.common_conf
+        kwargs = {
+            'num_workers': 1,
+            'shuffle': False, # make sure it is set to be False
+            'pin_memory': True,
+            'drop_last': False, # make sure it is set to be False
+            'collate_fn': None,  # Use default collate function
+            'worker_init_fn': None,
+            'persistent_workers': False,
+            'seed': self.seed_value,
+            'max_img_per_gpu': 48
+        }
+        self.dynamic_co3d_dataset = DynamicTorchDataset(
+            self.data_conf.train.co3d,
+            common_config=common_config,
+            **kwargs
+            )
+
+
+
+        # self.train_dataloader = self.train_data.get_loader()
+
+        # self.train_data = instantiate(
+        #     self.data_conf.train, _convert_="all"
+        # )
+        # self.val_data = instantiate(
+        #     self.data_conf.train, _convert_="all"
+        # )
+
+        logging.info("Dataloaders setup complete.")

@@ -14,9 +14,9 @@ import cv2
 import random
 import numpy as np
 
-
-from data.dataset_util import *
-from data.base_dataset import BaseDataset
+from training.data.dataset_util import *
+from training.data.base_dataset import BaseDataset
+from training.data.dynamic_dataloader import DynamicDistributedSampler, DynamicBatchSampler
 
 
 SEEN_CATEGORIES = [
@@ -96,6 +96,7 @@ class Co3dDataset(BaseDataset):
         self.get_nearby = common_conf.get_nearby
         self.load_depth = common_conf.load_depth
         self.inside_random = common_conf.inside_random
+        self.seed = common_conf.seed
 
         if CO3D_DIR is None or CO3D_ANNOTATION_DIR is None:
             raise ValueError("Both CO3D_DIR and CO3D_ANNOTATION_DIR must be specified.")
@@ -128,8 +129,11 @@ class Co3dDataset(BaseDataset):
 
         for c in category:
             for split_name in split_name_list:
+                # annotation_file = osp.join(
+                #     self.CO3D_ANNOTATION_DIR, f"{c}_{split_name}.jgz"
+                # )
                 annotation_file = osp.join(
-                    self.CO3D_ANNOTATION_DIR, f"{c}_{split_name}.jgz"
+                    self.CO3D_ANNOTATION_DIR, c, "frame_annotations.jgz"
                 )
 
                 try:
@@ -208,6 +212,7 @@ class Co3dDataset(BaseDataset):
 
             image_path = osp.join(self.CO3D_DIR, filepath)
             image = read_image_cv2(image_path)
+            print(f"Successfully read image from {image_path}")
 
             if self.load_depth:
                 depth_path = image_path.replace("/images", "/depths") + ".geometric.png"

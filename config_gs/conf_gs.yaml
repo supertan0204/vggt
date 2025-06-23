@@ -1,0 +1,11 @@
+wandb:
+  project: gs-lrm-unofficial
+  entity: scene-representation-group
+  name: xiyang
+  mode: online
+
+train:
+  device: cuda
+
+
+mode: train
