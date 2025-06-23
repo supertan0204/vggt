@@ -21,7 +21,7 @@ from .augmentation import get_image_augmentation
 class ComposedDataset(Dataset, ABC):
     """
     Composes multiple base datasets and applies common configurations.
-    
+
     This dataset provides a flexible way to combine multiple base datasets while
     applying shared augmentations, track generation, and other processing steps.
     It handles image normalization, tensor conversion, and other preparations
@@ -48,9 +48,9 @@ class ComposedDataset(Dataset, ABC):
 
         # --- Augmentation Settings ---
         # Controls whether to apply identical color jittering across all frames in a sequence
-        self.cojitter = common_config.augs.cojitter 
+        self.cojitter = common_config.augs.cojitter
         # Probability of using shared jitter vs. frame-specific jitter
-        self.cojitter_ratio = common_config.augs.cojitter_ratio 
+        self.cojitter_ratio = common_config.augs.cojitter_ratio
         # Initialize image augmentations (color jitter, grayscale, gaussian blur)
         self.image_aug = get_image_augmentation(
             color_jitter=common_config.augs.color_jitter,
@@ -145,7 +145,7 @@ class ComposedDataset(Dataset, ABC):
             "intrinsics": intrinsics,
             "cam_points": cam_points,
             "world_points": world_points,
-            "point_masks": point_masks, 
+            "point_masks": point_masks,
         }
 
         # --- Track Processing (if enabled) ---
@@ -153,7 +153,7 @@ class ComposedDataset(Dataset, ABC):
             if batch["tracks"] is not None:
                 # Use pre-computed tracks from the dataset
                 tracks = torch.from_numpy(np.stack(batch["tracks"]).astype(np.float32))
-                track_vis_mask = torch.from_numpy(np.stack(batch["track_masks"]).astype(bool)) 
+                track_vis_mask = torch.from_numpy(np.stack(batch["track_masks"]).astype(bool))
 
                 # Sample a subset of tracks randomly
                 valid_indices = torch.where(track_vis_mask[0])[0]
@@ -162,9 +162,9 @@ class ComposedDataset(Dataset, ABC):
                     sampled_indices = valid_indices[torch.randperm(len(valid_indices))][:self.track_num]
                 else:
                     # If not enough tracks, sample with replacement (allow duplicates)
-                    sampled_indices = valid_indices[torch.randint(0, len(valid_indices), 
+                    sampled_indices = valid_indices[torch.randint(0, len(valid_indices),
                                                     (self.track_num,),
-                                                    dtype=torch.int64, 
+                                                    dtype=torch.int64,
                                                     device=valid_indices.device)]
 
                 # Extract the sampled tracks and their masks
@@ -205,7 +205,7 @@ class TupleConcatDataset(ConcatDataset):
     def __init__(self, datasets, common_config):
         """
         Initialize the TupleConcatDataset.
-        
+
         Args:
             datasets (iterable): An iterable of PyTorch Dataset objects to concatenate.
             common_config (dict): Common configuration dict, used to check for random sampling.
@@ -226,7 +226,7 @@ class TupleConcatDataset(ConcatDataset):
 
         Returns:
             The item returned by the underlying dataset's __getitem__ method.
-            
+
         Raises:
             ValueError: If the index is out of range or the tuple doesn't have exactly 3 elements.
         """

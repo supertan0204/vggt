@@ -1,11 +1,42 @@
-data:
-  train:
-    _target_: training.datasets.DynamicDataset
-  val:
-    _target_: training.datasets.DynamicDataset
+defaults:
+  - default_dataset.yaml
 
+
+img_size: 518
+num_workers: 8
 seed_value: 42
 accum_steps: 1
+patch_size: 14
+
+data:
+  # The code for data still looks too complicated. I should refactor this again (do I have time?...)
+  train:
+    _target_: data.dynamic_dataloader.DynamicTorchDataset
+    num_workers: ${num_workers}
+    common_config:
+      img_size: ${img_size}
+      patch_size: ${patch_size}
+    dataset:
+      _target_: data.composed_dataset.ComposedDataset
+      dataset_configs:
+        - _target_: data.datasets.co3d.Co3dDataset
+          split: train
+          CO3D_DIR: /checkpoint/repligen/shared/datasets/co3d/
+          CO3D_ANNOTATION_DIR: /checkpoint/repligen/jianyuan/datasets/co3d_anno
+  val:
+    _target_: data.dynamic_dataloader.DynamicTorchDataset
+    num_workers: ${num_workers}
+    common_config:
+      img_size: ${img_size}
+      patch_size: ${patch_size}
+    dataset:
+      _target_: data.composed_dataset.ComposedDataset
+      dataset_configs:
+        - _target_: data.datasets.co3d.Co3dDataset
+          split: test
+          CO3D_DIR: /checkpoint/repligen/shared/datasets/co3d/
+          CO3D_ANNOTATION_DIR: /checkpoint/repligen/jianyuan/datasets/co3d_anno
+
 
 logging:
   log_dir: logs
@@ -20,6 +51,14 @@ checkpoint:
   save_dir: None
   save_freq: 10
   model_weight_initializer: None
+
+
+loss:
+  _target_: loss.MultitaskLoss
+  camera: null  # template, going to clean the dirty code and implement it later
+  depth: null   # template, going to clean the dirty code and implement it later
+  point: null   # template, going to clean the dirty code and implement it later
+  track: null   # template, going to clean the dirty code and implement it later
 
 
 

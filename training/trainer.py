@@ -81,6 +81,7 @@ class Trainer:
         resume_checkpoint_path: Optional[str] = None,
         env_variables: Optional[Dict[str, Any]] = None,
         accum_steps: int = 1,
+        **kwargs,
     ):
         self.resume_checkpoint_path = resume_checkpoint_path
 
@@ -203,47 +204,49 @@ class Trainer:
 
         self.tb_writer = instantiate(self.logging_conf.tensorboard_writer, _recursive_=False)
         self.model = instantiate(self.model_conf, _recursive_=False)
-        if self.optim_conf.frozen_module_names is not None:
+        if getattr(self.optim_conf, "frozen_module_names", None):
             logging.info(
-                f"[Start] Freezing 'frozen_module_names' on rank {self.distributed_rank}"
+                f"[Start] Freezing modules: {self.optim_conf.frozen_module_names} on rank {self.distributed_rank}"
             )
             self.model = freeze_modules(
                 self.model,
                 patterns=self.optim_conf.frozen_module_names,
             )
             logging.info(
-                f"[Done] Freezing 'frozen_module_names' on rank {self.distributed_rank}"
+                f"[Done] Freezing modules: {self.optim_conf.frozen_module_names} on rank {self.distributed_rank}"
             )
-
 
         model_summary_path = os.path.join(self.logging_conf.log_dir, "model.txt")
         model_summary(self.model, log_file=model_summary_path)
         logging.info(f"Model summary saved to {model_summary_path}")
 
+        # TODO: Remind myself to finish this
+        # Clean the dirty loss and build a single object
+        self.loss = instantiate(self.loss_conf, _recursive_=False)
 
-        import pdb;pdb.set_trace()
-        self.loss = None
-        self.loss = instantiate(self.loss_conf, _convert_="all")
-        # if self.loss_conf:
-        #     self.loss = wrap_base_loss(instantiate(self.loss_conf, _convert_="all"))
-            # self.loss = {
-            #     key: wrap_base_loss(el)
-            #     for (key, el) in instantiate(self.loss_conf, _convert_="all").items()
-            # }
-            # self.loss = nn.ModuleDict(self.loss)
-
-        self.meters = {}
-        self.best_meter_values = {}
-        if self.meters_conf:
-            self.meters = instantiate(self.meters_conf, _convert_="all")
 
         # Use standard Gradient Scaler for DDP
         self.scaler = torch.cuda.amp.GradScaler(enabled=self.optim_conf.amp.enabled)
-
         self.gradient_clipper = instantiate(self.optim_conf.gradient_clip)
-        self.gradient_logger = instantiate(self.optim_conf.gradient_logger)
 
-        logging.info("Finished setting up components: Model, loss, optim, meters etc.")
+        logging.info("Successfully initialized all training components: model, loss function, optimizer, and etc.")
+
+
+
+    def _setup_dataloaders(self):
+        self.train_dataset = None
+        self.val_dataset = None
+
+        if self.mode in ["train", "val"]:
+            self.val_dataset = instantiate(
+                self.data_conf.get('val', None), _recursive_=False
+            )
+            if self.val_dataset is not None:
+                self.val_dataset.seed = self.seed_value
+
+        if self.mode in ["train"]:
+            self.train_dataset = instantiate(self.data_conf.train, _recursive_=False)
+            self.train_dataset.seed = self.seed_value
 
 
     def _setup_ddp_distributed_training(self, distributed_conf, device):

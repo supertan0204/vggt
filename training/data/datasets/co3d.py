@@ -15,8 +15,8 @@ import random
 import numpy as np
 
 
-from vggt.training.data.dataset_util import *
-from vggt.training.data.base_dataset import BaseDataset
+from data.dataset_util import *
+from data.base_dataset import BaseDataset
 
 
 SEEN_CATEGORIES = [
@@ -153,7 +153,7 @@ class Co3dDataset(BaseDataset):
 
         status = "Training" if self.training else "Test"
         logging.info(f"{status}: Co3D Data size: {self.sequence_list_len}")
-        logging.info(f"{status}: Co3D Data length of training set: {len(self)}")
+        logging.info(f"{status}: Co3D Data dataset length: {len(self)}")
 
     def get_data(
         self,

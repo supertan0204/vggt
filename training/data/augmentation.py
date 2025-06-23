@@ -14,7 +14,7 @@ def get_image_augmentation(
     gau_blur: bool = False
 ) -> Optional[transforms.Compose]:
     """Create a composition of image augmentations.
-    
+
     Args:
         color_jitter: Dictionary containing color jitter parameters:
             - brightness: float (default: 0.5)
@@ -25,7 +25,7 @@ def get_image_augmentation(
             If None, uses default values
         gray_scale: Whether to apply random grayscale (default: True)
         gau_blur: Whether to apply gaussian blur (default: False)
-        
+
     Returns:
         A Compose object of transforms or None if no transforms are added
     """
@@ -40,8 +40,6 @@ def get_image_augmentation(
 
     # Handle color jitter
     if color_jitter is not None:
-        if not isinstance(color_jitter, dict):
-            raise ValueError("color_jitter must be a dictionary or None")
         # Merge with defaults for missing keys
         effective_jitter = {**default_jitter, **color_jitter}
     else:
@@ -72,4 +70,3 @@ def get_image_augmentation(
         )
 
     return transforms.Compose(transform_list) if transform_list else None
-

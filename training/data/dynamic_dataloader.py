@@ -10,10 +10,11 @@ from hydra.utils import instantiate
 import random
 import numpy as np
 from torch.utils.data import DataLoader, Dataset, DistributedSampler, IterableDataset, Sampler
+from abc import ABC, abstractmethod
 
 from .worker_fn import get_worker_init_fn
 
-class DynamicTorchDataset(OmniDataset):
+class DynamicTorchDataset(ABC):
     def __init__(
         self,
         dataset: dict,
@@ -39,33 +40,33 @@ class DynamicTorchDataset(OmniDataset):
         self.persistent_workers = persistent_workers
         self.seed = seed
         self.max_img_per_gpu = max_img_per_gpu
-        
+
         # Instantiate the dataset
         self.dataset = instantiate(dataset, common_config=common_config, _recursive_=False)
-        
+
         # Extract aspect ratio and image number ranges from the configuration
-        self.aspect_ratio_range = common_config.aspects  # e.g., [0.5, 1.0]
+        self.aspect_ratio_range = common_config.augs.aspects  # e.g., [0.5, 1.0]
         self.image_num_range = common_config.img_nums    # e.g., [2, 24]
-        
+
         # Validate the aspect ratio and image number ranges
-        if len(self.aspect_ratio_range) != 2 or self.aspect_ratio_range[0] >= self.aspect_ratio_range[1]:
-            raise ValueError(f"aspect_ratio_range must be [min, max] with min < max, got {self.aspect_ratio_range}")
-        if len(self.image_num_range) != 2 or self.image_num_range[0] < 1 or self.image_num_range[0] >= self.image_num_range[1]:
-            raise ValueError(f"image_num_range must be [min, max] with 1 <= min < max, got {self.image_num_range}")
-        
+        if len(self.aspect_ratio_range) != 2 or self.aspect_ratio_range[0] > self.aspect_ratio_range[1]:
+            raise ValueError(f"aspect_ratio_range must be [min, max] with min <= max, got {self.aspect_ratio_range}")
+        if len(self.image_num_range) != 2 or self.image_num_range[0] < 1 or self.image_num_range[0] > self.image_num_range[1]:
+            raise ValueError(f"image_num_range must be [min, max] with 1 <= min <= max, got {self.image_num_range}")
+
         # Create samplers
         self.sampler = DynamicDistributedSampler(self.dataset, seed=seed, shuffle=shuffle)
         self.batch_sampler = DynamicBatchSampler(
-            self.sampler, 
-            self.aspect_ratio_range, 
-            self.image_num_range, 
+            self.sampler,
+            self.aspect_ratio_range,
+            self.image_num_range,
             seed=seed,
             max_img_per_gpu=max_img_per_gpu
         )
 
     def get_loader(self, epoch):
         print("Building dynamic dataloader with seed:", self.seed)
-        
+
         # Set the epoch for the sampler
         self.sampler.set_epoch(epoch)
         if hasattr(self.dataset, "epoch"):
@@ -117,7 +118,7 @@ class DynamicBatchSampler(Sampler):
         self.aspect_ratio_range = aspect_ratio_range
         self.image_num_range = image_num_range
         self.rng = random.Random()
-        
+
         # Uniformly sample from the range of possible image numbers
         # For any image number, the weight is 1.0 (uniform sampling). You can set any different weights here.
         self.image_num_weights = {num_images: 1.0 for num_images in range(image_num_range[0], image_num_range[1]+1)}
@@ -125,7 +126,7 @@ class DynamicBatchSampler(Sampler):
         # Possible image numbers, e.g., [2, 3, 4, ..., 24]
         self.possible_nums = np.array([n for n in self.image_num_weights.keys()
                                        if self.image_num_range[0] <= n <= self.image_num_range[1]])
-        
+
         # Normalize weights for sampling
         weights = [self.image_num_weights[n] for n in self.possible_nums]
         self.normalized_weights = np.array(weights) / sum(weights)
