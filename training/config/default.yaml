@@ -65,8 +65,6 @@ data:
      
 
 
-seed_value: 42
-accum_steps: 1
 
 logging:
   log_dir: logs
