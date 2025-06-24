@@ -53,7 +53,7 @@ from .train_utils.general import *
 from .train_utils.logging import setup_logging
 from .train_utils.distributed import get_machine_local_and_dist_rank
 from .train_utils.freeze import freeze_modules
-from training.data.dynamic_dataloader import *
+from vggt.training.data.dynamic_dataloader import *
 class Trainer:
     """
     Trainer supporting the DDP training strategies.
