@@ -40,7 +40,7 @@ import torch
 import torch.distributed as dist
 import torch.nn as nn
 import torchvision
-
+import fvcore
 from einops import rearrange
 from hydra.utils import instantiate
 from iopath.common.file_io import g_pathmgr
@@ -53,6 +53,7 @@ from train_utils.general import *
 from train_utils.logging import setup_logging
 from train_utils.distributed import get_machine_local_and_dist_rank
 from train_utils.freeze import freeze_modules
+from train_utils.optimizer import build_optimizer
 class Trainer:
     """
     Trainer supporting the DDP training strategies.
@@ -78,13 +79,10 @@ class Trainer:
         limit_val_batches: Optional[int] = None,
         optim: Optional[Dict[str, Any]] = None,
         loss: Optional[Dict[str, Any]] = None,
-        resume_checkpoint_path: Optional[str] = None,
         env_variables: Optional[Dict[str, Any]] = None,
         accum_steps: int = 1,
         **kwargs,
     ):
-        self.resume_checkpoint_path = resume_checkpoint_path
-
         self._setup_env_variables(env_variables)
         self._setup_timers()
 
@@ -92,7 +90,8 @@ class Trainer:
         self.model_conf = model
         self.loss_conf = loss
         self.logging_conf = logging
-        # self.checkpoint_conf = TrainerCheckpointConf(**checkpoint).infer_missing()
+        self.checkpoint_conf = checkpoint
+
 
         # hyperparameters
         self.accum_steps = accum_steps
@@ -126,20 +125,27 @@ class Trainer:
 
         self._setup_components()  # Except Optimizer everything is setup here.
         self._setup_dataloaders()
-        self._move_to_device()
+
+        self.model.to(self.device)
+        if self.scaler:
+            copy_data_to_device(self.scaler, self.device)
 
         self.time_elapsed_meter = DurationMeter("Time Elapsed", self.device, ":.2f")
 
         if self.mode != "val":
-            self._construct_optimizers()
+            self.optims = build_optimizer(
+                self.model,
+                self.optim_conf,
+            )
 
         ################################
         for _ in range(10):
             print(f"Custom resume ckpt: {self.resume_checkpoint_path}")
-        if self.resume_checkpoint_path is not None:
-            self._load_resuming_checkpoint(self.resume_checkpoint_path)
+        if self.checkpoint_conf.resume_checkpoint_path is not None:
+            self._load_resuming_checkpoint(self.checkpoint_conf.resume_checkpoint_path)
         ################################
 
+        import pdb;pdb.set_trace()
         self.load_checkpoint()
         self._setup_ddp_distributed_training(distributed, device)
 
@@ -278,21 +284,3 @@ class Trainer:
                 logging.info("Enabling fp16 grad communication")
             process_group = None
             self.model.register_comm_hook(process_group, hook)
-
-
-    def _move_to_device(self):
-        print(
-            f"Moving components to device {self.device} and local rank {self.local_rank}."
-        )
-        self.model.to(self.device)
-
-        if self.loss:
-            copy_data_to_device(self.loss, self.device)
-        if self.scaler:
-            copy_data_to_device(self.scaler, self.device)
-        for meter in self._get_meters().values():
-            meter.set_sync_device(self.device)
-
-        print(
-            f"Done moving components to device {self.device} and local rank {self.local_rank}."
-        )

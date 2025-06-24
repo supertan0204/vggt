@@ -1,7 +1,7 @@
 defaults:
   - default_dataset.yaml
 
-
+exp_name: exp001
 img_size: 518
 num_workers: 8
 seed_value: 42
@@ -47,10 +47,11 @@ logging:
     _target_: train_utils.tb_writer.TensorBoardLogger
     path: ${logging.log_dir}/tensorboard
 
+
 checkpoint:
-  save_dir: None
+  save_dir: logs/${exp_name}
   save_freq: 10
-  model_weight_initializer: None
+  resume_checkpoint_path: /home/jianyuan/data/model.pt
 
 
 loss:
@@ -64,6 +65,8 @@ loss:
 
 
 optim:
+  param_group_modifiers: False
+
   optimizer:
     _target_: torch.optim.AdamW
     lr: 1e-4
