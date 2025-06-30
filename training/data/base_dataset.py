@@ -9,6 +9,7 @@ from PIL import Image, ImageFile
 
 from torch.utils.data import Dataset
 from .dataset_util import *
+import logging
 
 Image.MAX_IMAGE_PIXELS = None
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -111,6 +112,80 @@ class BaseDataset(Dataset):
 
         image_shape = np.array([short_size, self.img_size])
         return image_shape
+    
+    def process_one_image_simple(
+        self,
+        image,
+        depth_map,
+        original_size,
+        target_image_shape,
+        rescale_aug=False,
+        safe_bound=4,
+    ):
+        image = np.copy(image)
+        if depth_map is not None:
+            depth_map = np.copy(depth_map)
+        # Apply random scale augmentation during training if enabled
+        if self.training and self.aug_scale:
+            random_h_scale, random_w_scale = np.random.uniform(
+                self.aug_scale[0], self.aug_scale[1], 2
+            )
+            
+            # Avoid random padding by capping at 1.0
+            random_h_scale = min(random_h_scale, 1.0)
+            random_w_scale = min(random_w_scale, 1.0)
+            aug_size = original_size * np.array([random_h_scale, random_w_scale])
+            aug_size = aug_size.astype(np.int32)
+        else:
+            aug_size = original_size
+            
+        original_size = np.array(image.shape[:2])
+        # logging.info(f"original_size:{original_size}")
+        target_shape = target_image_shape
+        
+        # Handle landscape vs. portrait orientation
+        rotate_to_portrait = False
+        if self.landscape_check:
+            # Switch between landscape and portrait if necessary
+            if original_size[0] > 1.25 * original_size[1]:
+                if (target_image_shape[0] != target_image_shape[1]) and (np.random.rand() > 0.5):
+                    target_shape = np.array([target_image_shape[1], target_image_shape[0]])
+                    rotate_to_portrait = True
+        # logging.info(target_shape)
+        
+        # Resize images
+        if self.rescale:
+            if rescale_aug:
+                resize_scales = (target_shape + safe_bound) / original_size
+                max_resize_scale = np.max(resize_scales)
+            else:
+                max_resize_scale = np.max(target_shape / original_size)
+                
+
+            image = Image.fromarray(image)
+            input_resolution = np.array(image.size)
+            # output_resolution = np.floor(input_resolution * max_resize_scale).astype(int)
+            # output_resolution = np.array([868, 476], dtype=int)
+            output_resolution = np.array([280, 518], dtype=int)
+            
+            # logging.info(f"output resolution: {output_resolution}")
+            image = image.resize(tuple(output_resolution), resample=lanczos if max_resize_scale < 1 else bicubic)
+            image = np.array(image)
+            image = np.transpose(image, (2,0,1))
+            if depth_map is not None:
+                depth_map = cv2.resize(
+                    depth_map,
+                    output_resolution,
+                    fx=max_resize_scale,
+                    fy=max_resize_scale,
+                    interpolation=cv2.INTER_NEAREST,
+                )
+                assert image.shape[:2] == depth_map.shape[:2]
+        return (
+            image,
+            depth_map,
+        )
+
 
     def process_one_image(
         self,

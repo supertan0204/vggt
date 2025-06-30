@@ -97,6 +97,7 @@ class Co3dDataset(BaseDataset):
         self.load_depth = common_conf.load_depth
         self.inside_random = common_conf.inside_random
         self.seed = common_conf.seed
+        self.duplicate_img = common_conf.duplicate_img if hasattr(common_conf, 'duplicate_img') else False
 
         if CO3D_DIR is None or CO3D_ANNOTATION_DIR is None:
             raise ValueError("Both CO3D_DIR and CO3D_ANNOTATION_DIR must be specified.")
@@ -128,13 +129,14 @@ class Co3dDataset(BaseDataset):
         total_frame_num = 0
 
         for c in category:
-            for split_name in split_name_list:
+            for _ in split_name_list:
                 # annotation_file = osp.join(
                 #     self.CO3D_ANNOTATION_DIR, f"{c}_{split_name}.jgz"
                 # )
                 annotation_file = osp.join(
-                    self.CO3D_ANNOTATION_DIR, c, "frame_annotations.jgz"
+                    self.CO3D_ANNOTATION_DIR, c, "sequence_annotations.jgz"
                 )
+                frame_annotation_file = osp.join(self.CO3D_ANNOTATION_DIR, c, "frame_annotations.jgz")
 
                 try:
                     with gzip.open(annotation_file, "r") as fin:
@@ -142,19 +144,49 @@ class Co3dDataset(BaseDataset):
                 except FileNotFoundError:
                     logging.error(f"Annotation file not found: {annotation_file}")
                     continue
-
-                for seq_name, seq_data in annotation.items():
-                    if len(seq_data) < min_num_images:
+                
+                try:
+                    with gzip.open(frame_annotation_file, "r") as fin:
+                        frame_annotation = json.loads(fin.read())
+                except FileNotFoundError:
+                    logging.error(f"Frame annotation file not found: {frame_annotation_file}")
+                    continue
+                # logging.info(f"annotaion length: {len(annotation)}")
+                # logging.info(f"frame_annotation length: {len(frame_annotation)}")
+                # count = 0
+                # for item in annotation:
+                #     count += 1 
+                #     print(f"sequence name: {item['sequence_name']}, frame number: {item['frame_number']}, file name: {item['image']['path']}, count: {count}")
+                # print(annotation[0])
+                # print(frame_annotation[0])
+                
+                for item in annotation:
+                    seq_name = item["sequence_name"]
+                    seq_path = osp.join(self.CO3D_DIR, c, seq_name)
+                    if not osp.exists(seq_path):
+                        logging.warning(f"Sequence path does not exist: {seq_path}")
                         continue
-                    if seq_name in self.invalid_sequence:
-                        continue
-                    total_frame_num += len(seq_data)
-                    self.data_store[seq_name] = seq_data
+                    img_path = osp.join(seq_path, "images")
+                    frame_num = len([f for f in os.listdir(img_path) if osp.isfile(os.path.join(img_path, f))])
+                    self.data_store[seq_name] = seq_path
+                    total_frame_num += frame_num
+                    # print(f"sequence path: {seq_path}, frame number: {num_frame}")
+                
+                # for seq_name, seq_data in annotation.items():
+                #     if len(seq_data) < min_num_images:
+                #         continue
+                #     if seq_name in self.invalid_sequence:
+                #         continue
+                #     total_frame_num += len(seq_data)
+                #     self.data_store[seq_name] = seq_data
 
-        self.sequence_list = list(self.data_store.keys())
-        self.sequence_list_len = len(self.sequence_list)
+        self.sequence_list = list(self.data_store.keys()) # the list of all sequences, like: ['110_13051_23361', '189_20393_38136', ...]
+        self.sequence_list_len = len(self.sequence_list) 
         self.total_frame_num = total_frame_num
-
+        # print(self.sequence_list) 
+        # print(self.sequence_list_len)
+        # print(self.total_frame_num)
+        # print(self.data_store[self.sequence_list[0]]) # data_store is a dict, the key is the sequence name, the value is the path to the sequence
         status = "Training" if self.training else "Test"
         logging.info(f"{status}: Co3D Data size: {self.sequence_list_len}")
         logging.info(f"{status}: Co3D Data dataset length: {len(self)}")
@@ -180,42 +212,53 @@ class Co3dDataset(BaseDataset):
         Returns:
             dict: A batch of data including images, depths, and other metadata.
         """
+        # logging.info(f"seq_index: {seq_index}, img_per_seq: {img_per_seq}, seq_name: {seq_name}, ids: {ids}, aspect_ratio: {aspect_ratio}")
         if self.inside_random:
             seq_index = random.randint(0, self.sequence_list_len - 1)
 
         if seq_name is None:
             seq_name = self.sequence_list[seq_index]
 
-        metadata = self.data_store[seq_name]
+        seq_file = self.data_store[seq_name]
+        file_list = os.listdir(osp.join(seq_file, "images"))
+        # logging.info(f"seq_file: {seq_file}, file_list: {file_list}")
+        num_files = len([f for f in file_list if osp.isfile(os.path.join(seq_file, "images", f))])
+        # logging.info(f"num_files: {num_files} in sequence {seq_name},/home/ubuntu/nvme/xiyang/vggt/co3d/cake/374_42274_84517
 
         if ids is None:
             ids = np.random.choice(
-                len(metadata), img_per_seq, replace=self.duplicate_img
-            )
-
-        annos = [metadata[i] for i in ids]
-
+                num_files, img_per_seq, replace=self.duplicate_img
+            ) # select some random images from a given sequence
+            # ids = np.random.choice(
+            #     len(seq_file), img_per_seq, replace=self.duplicate_img
+            # )
+            # # annos = [metadata[i] for i in ids]
+        # logging.info(f"ids: {ids}")
         target_image_shape = self.get_target_shape(aspect_ratio)
 
         images = []
         depths = []
-        cam_points = []
-        world_points = []
-        point_masks = []
-        extrinsics = []
-        intrinsics = []
+        # cam_points = []
+        # world_points = []
+        # point_masks = []
+        # extrinsics = []
+        # intrinsics = []
         image_paths = []
         original_sizes = []
 
-        for anno in annos:
-            filepath = anno["filepath"]
+        # for anno in annos:
+        for id in ids:
+            # filepath = anno["filepath"]
 
-            image_path = osp.join(self.CO3D_DIR, filepath)
+            # image_path = osp.join(self.CO3D_DIR, filepath)
+            # logging.info(f"seq_file: {seq_file}, file_list[id]: {file_list[id]}")
+            image_path = osp.join(seq_file, "images", file_list[id])
             image = read_image_cv2(image_path)
-            print(f"Successfully read image from {image_path}")
+            # logging.info(f"Successfully read image from {image_path}")
 
             if self.load_depth:
                 depth_path = image_path.replace("/images", "/depths") + ".geometric.png"
+                logging.info(f"Loading depth map from {depth_path}")
                 depth_map = read_depth(depth_path, 1.0)
 
                 if self.mask_depth:
@@ -232,35 +275,47 @@ class Co3dDataset(BaseDataset):
                 depth_map = None
 
             original_size = np.array(image.shape[:2])
-            extri_opencv = np.array(anno["extri"])
-            intri_opencv = np.array(anno["intri"])
-
+            # extri_opencv = np.array(anno["extri"])
+            # intri_opencv = np.array(anno["intri"])
+            
             (
                 image,
+                depth_map,    
+            ) = self.process_one_image_simple(
+                image, 
                 depth_map,
-                extri_opencv,
-                intri_opencv,
-                world_coords_points,
-                cam_coords_points,
-                point_mask,
-                _,
-            ) = self.process_one_image(
-                image,
-                depth_map,
-                extri_opencv,
-                intri_opencv,
                 original_size,
                 target_image_shape,
-                filepath=filepath,
+                rescale_aug=False,
+                safe_bound=4
             )
-
+            # (
+            #     image,
+            #     depth_map,
+            #     # extri_opencv,
+            #     # intri_opencv,
+            #     world_coords_points,
+            #     cam_coords_points,
+            #     point_mask,
+            #     _,
+            # ) = self.process_one_image(
+            #     image,
+            #     depth_map,
+            #     # extri_opencv,
+            #     # intri_opencv,
+            #     original_size,
+            #     target_image_shape,
+            #     # filepath=filepath,
+            #     filepath=image_path
+            # )
+            # print(image)
             images.append(image)
             depths.append(depth_map)
-            extrinsics.append(extri_opencv)
-            intrinsics.append(intri_opencv)
-            cam_points.append(cam_coords_points)
-            world_points.append(world_coords_points)
-            point_masks.append(point_mask)
+            # extrinsics.append(extri_opencv)
+            # intrinsics.append(intri_opencv)
+            # cam_points.append(cam_coords_points)
+            # world_points.append(world_coords_points)
+            # point_masks.append(point_mask)
             image_paths.append(image_path)
             original_sizes.append(original_size)
 
@@ -269,14 +324,18 @@ class Co3dDataset(BaseDataset):
         batch = {
             "seq_name": set_name + "_" + seq_name,
             "ids": ids,
-            "frame_num": len(extrinsics),
+            # "frame_num": len(extrinsics),
+            "frame_num": len(images),
             "images": images,
-            "depths": depths,
-            "extrinsics": extrinsics,
-            "intrinsics": intrinsics,
-            "cam_points": cam_points,
-            "world_points": world_points,
-            "point_masks": point_masks,
-            "original_sizes": original_sizes,
+            # "depths": depths,
+            # "extrinsics": extrinsics,
+            # "intrinsics": intrinsics,
+            # "cam_points": cam_points,
+            # "world_points": world_points,
+            # "point_masks": point_masks,
+            # "original_sizes": original_sizes,
         }
+        # logging.info(f"Batch created for {len(images)} images with size {images[0].shape}.")
         return batch
+
+

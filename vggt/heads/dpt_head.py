@@ -208,8 +208,10 @@ class DPTHead(nn.Module):
             # Select frames if processing a chunk
             if frames_start_idx is not None and frames_end_idx is not None:
                 x = x[:, frames_start_idx:frames_end_idx]
-
-            x = x.view(B * S, -1, x.shape[-1])
+            if not x.is_contiguous():
+                x = x.contiguous().view(B * S, -1, x.shape[-1])
+            else:
+                x = x.view(B * S, -1, x.shape[-1])
 
             x = self.norm(x)
 

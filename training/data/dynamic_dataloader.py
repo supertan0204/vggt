@@ -48,7 +48,7 @@ class DynamicTorchDataset(Dataset):
         self.dataset = instantiate(dataset)
 
         # Extract aspect ratio and image number ranges from the configuration
-        self.aspect_ratio_range = common_config.augs.aspects  # e.g., [0.5, 1.0]
+        self.aspect_ratio_range = common_config.aspects  # e.g., [0.5, 1.0]
         self.image_num_range = common_config.img_nums    # e.g., [2, 24]
 
         # Validate the aspect ratio and image number ranges
@@ -165,7 +165,6 @@ class DynamicBatchSampler(Sampler):
                 # Sample random image number and aspect ratio
                 random_image_num = int(np.random.choice(self.possible_nums, p=self.normalized_weights))
                 random_aspect_ratio = round(self.rng.uniform(self.aspect_ratio_range[0], self.aspect_ratio_range[1]), 2)
-
                 # Update sampler parameters
                 self.sampler.update_parameters(
                     aspect_ratio=random_aspect_ratio,

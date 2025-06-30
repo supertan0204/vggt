@@ -47,13 +47,15 @@ from iopath.common.file_io import g_pathmgr
 from PIL import Image
 
 from datetime import timedelta
+from torch.cuda.amp import autocast, GradScaler
+
 
 #
 from .train_utils.general import *
 from .train_utils.logging import setup_logging
 from .train_utils.distributed import get_machine_local_and_dist_rank
 from .train_utils.freeze import freeze_modules
-from vggt.training.data.dynamic_dataloader import *
+from .data.dynamic_dataloader import *
 class Trainer:
     """
     Trainer supporting the DDP training strategies.
@@ -164,9 +166,23 @@ class Trainer:
             self.epoch = epoch
             # set up dataloader for the current epoch
             trainloader = self.dynamic_co3d_dataset.get_loader(epoch)
-            for item in trainloader:
-                print(item)
-                import pdb;pdb.set_trace()
+
+            for batch in trainloader:
+                list_of_scene_images = batch['images']
+                # load the data
+                batched_images = torch.stack(list_of_scene_images, 0) # B, S, H, W, 3
+                print(f"batched_images shape: {batched_images.shape}")
+                # send to model 
+                with autocast(enabled=False):
+                    output = self.model(batched_images)
+                # print("ok")
+                
+
+                # if count <= 100:
+                #     print(f"seq_name {batch['seq_name']}, frame_num {batch['frame_num']}, {batch['images'][0].shape}")
+                #     count += 1
+                # else:
+                #     break
             
         
         
