@@ -148,3 +148,6 @@ skyseg.onnx
 # pixi environments
 .pixi
 *.egg-info
+
+# outputs
+./outputs/*
