@@ -44,8 +44,8 @@ data:
           split: test
           # CO3D_DIR: /checkpoint/repligen/shared/datasets/co3d/
           # CO3D_ANNOTATION_DIR: /checkpoint/repligen/jianyuan/datasets/co3d_anno
-          CO3D_DIR: /fsx-repligen/jianyuan/transfer_buffer/small_set/co3d/
-          CO3D_ANNOTATION_DIR: /fsx-repligen/jianyuan/transfer_buffer/small_set/co3d_anno
+          CO3D_DIR: /home/ubuntu/nvme/Training/co3d
+          CO3D_ANNOTATION_DIR: /home/ubuntu/nvme/Training/co3d_anno
 
 
 logging:
