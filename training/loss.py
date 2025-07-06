@@ -9,7 +9,7 @@ import torch.nn.functional as F
 
 from dataclasses import dataclass
 from vggt.utils.pose_enc import extri_intri_to_pose_encoding
-from train_utils.general import check_and_fix_inf_nan
+from training.train_utils.general import check_and_fix_inf_nan
 from math import ceil, floor
 
 

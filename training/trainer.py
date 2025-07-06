@@ -51,13 +51,13 @@ from PIL import Image
 from datetime import timedelta
 
 #
-from train_utils.general import *
-from train_utils.logging import setup_logging
-from train_utils.distributed import get_machine_local_and_dist_rank
-from train_utils.freeze import freeze_modules
-from train_utils.optimizer import construct_optimizers
-from train_utils.normalization import normalize_camera_extrinsics_and_points_batch
-from train_utils.checkpoint import DDPCheckpointSaver
+from training.train_utils.general import *
+from training.train_utils.logging import setup_logging
+from training.train_utils.distributed import get_machine_local_and_dist_rank
+from training.train_utils.freeze import freeze_modules
+from training.train_utils.optimizer import construct_optimizers
+from training.train_utils.normalization import normalize_camera_extrinsics_and_points_batch
+from training.train_utils.checkpoint import DDPCheckpointSaver
 
 
 class Trainer:

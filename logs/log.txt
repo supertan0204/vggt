@@ -1,0 +1,90 @@
+INFO 2025-07-06 10:34:19,968 general.py: 222: GPU SEED: 4200
+INFO 2025-07-06 10:34:19,969 trainer.py: 250: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-06 10:35:58,807 general.py: 222: GPU SEED: 4200
+INFO 2025-07-06 10:35:58,809 trainer.py: 250: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-06 10:35:59,421 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-06 10:36:58,523 trainer.py: 257: [Start] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-06 10:36:58,723 trainer.py: 264: [Done] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-06 10:37:07,950 trainer.py: 270: Model summary saved to logs/model.txt
+INFO 2025-07-06 10:38:24,764 general.py: 222: GPU SEED: 4200
+INFO 2025-07-06 10:38:24,765 trainer.py: 250: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-06 10:38:24,856 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-06 10:39:34,689 trainer.py: 257: [Start] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-06 10:39:35,390 trainer.py: 264: [Done] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-06 10:39:52,718 trainer.py: 270: Model summary saved to logs/model.txt
+INFO 2025-07-06 10:43:43,064 general.py: 222: GPU SEED: 4200
+INFO 2025-07-06 10:43:43,070 trainer.py: 250: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-06 10:43:43,479 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-06 10:44:40,727 trainer.py: 257: [Start] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-06 10:44:41,169 trainer.py: 264: [Done] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-06 10:44:57,288 trainer.py: 270: Model summary saved to logs/model.txt
+INFO 2025-07-06 10:44:57,321 trainer.py: 281: Successfully initialized all training components: model, loss function, optimizer, and etc.
+INFO 2025-07-06 10:46:40,247 general.py: 222: GPU SEED: 4200
+INFO 2025-07-06 10:46:40,253 trainer.py: 250: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-06 10:46:40,380 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-06 10:47:33,714 trainer.py: 257: [Start] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-06 10:47:33,893 trainer.py: 264: [Done] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-06 10:47:46,201 trainer.py: 270: Model summary saved to logs/model.txt
+INFO 2025-07-06 10:47:46,241 trainer.py: 281: Successfully initialized all training components: model, loss function, optimizer, and etc.
+INFO 2025-07-06 10:52:56,464 general.py: 222: GPU SEED: 4200
+INFO 2025-07-06 10:52:56,466 trainer.py: 250: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-06 10:52:56,706 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-06 10:53:58,641 trainer.py: 257: [Start] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-06 10:53:58,779 trainer.py: 264: [Done] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-06 10:54:11,239 trainer.py: 270: Model summary saved to logs/model.txt
+INFO 2025-07-06 10:54:11,259 trainer.py: 281: Successfully initialized all training components: model, loss function, optimizer, and etc.
+INFO 2025-07-06 10:54:11,542 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-06 10:54:12,542 co3d.py: 159: Test: Co3D Data size: 49
+INFO 2025-07-06 10:54:12,542 co3d.py: 160: Test: Co3D Data dataset length: 10000
+INFO 2025-07-06 10:54:12,587 co3d.py: 126: CO3D_DIR is /fsx-repligen/jianyuan/transfer_buffer/small_set/co3d/
+ERROR 2025-07-06 10:54:12,592 co3d.py: 143: Annotation file not found: /fsx-repligen/jianyuan/transfer_buffer/small_set/co3d_anno/apple_train.jgz
+INFO 2025-07-06 10:54:12,592 co3d.py: 159: Training: Co3D Data size: 0
+INFO 2025-07-06 10:54:12,592 co3d.py: 160: Training: Co3D Data dataset length: 100000
+INFO 2025-07-06 10:54:22,959 trainer.py: 203: Resuming training from /fsx-repligen/jianyuan/transfer_buffer/ckpts/model.pt (rank 0)
+INFO 2025-07-06 10:55:20,904 general.py: 222: GPU SEED: 4200
+INFO 2025-07-06 10:55:20,915 trainer.py: 250: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-06 10:55:21,132 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-06 10:56:26,504 trainer.py: 257: [Start] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-06 10:56:26,906 trainer.py: 264: [Done] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-06 10:56:41,321 trainer.py: 270: Model summary saved to logs/model.txt
+INFO 2025-07-06 10:56:41,342 trainer.py: 281: Successfully initialized all training components: model, loss function, optimizer, and etc.
+INFO 2025-07-06 10:56:41,463 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-06 10:56:42,617 co3d.py: 159: Test: Co3D Data size: 49
+INFO 2025-07-06 10:56:42,618 co3d.py: 160: Test: Co3D Data dataset length: 10000
+INFO 2025-07-06 10:56:42,756 co3d.py: 126: CO3D_DIR is /fsx-repligen/jianyuan/transfer_buffer/small_set/co3d/
+ERROR 2025-07-06 10:56:42,765 co3d.py: 143: Annotation file not found: /fsx-repligen/jianyuan/transfer_buffer/small_set/co3d_anno/apple_train.jgz
+INFO 2025-07-06 10:56:42,766 co3d.py: 159: Training: Co3D Data size: 0
+INFO 2025-07-06 10:56:42,767 co3d.py: 160: Training: Co3D Data dataset length: 100000
+INFO 2025-07-06 10:56:54,712 trainer.py: 203: Resuming training from None (rank 0)
+INFO 2025-07-06 10:57:50,149 general.py: 222: GPU SEED: 4200
+INFO 2025-07-06 10:57:50,154 trainer.py: 250: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-06 10:57:50,505 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-06 10:58:43,198 trainer.py: 257: [Start] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-06 10:58:43,399 trainer.py: 264: [Done] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-06 10:58:54,705 trainer.py: 270: Model summary saved to logs/model.txt
+INFO 2025-07-06 10:58:54,722 trainer.py: 281: Successfully initialized all training components: model, loss function, optimizer, and etc.
+INFO 2025-07-06 10:58:54,800 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-06 10:58:55,177 co3d.py: 159: Test: Co3D Data size: 49
+INFO 2025-07-06 10:58:55,177 co3d.py: 160: Test: Co3D Data dataset length: 10000
+INFO 2025-07-06 10:58:55,285 co3d.py: 126: CO3D_DIR is /fsx-repligen/jianyuan/transfer_buffer/small_set/co3d/
+ERROR 2025-07-06 10:58:55,296 co3d.py: 143: Annotation file not found: /fsx-repligen/jianyuan/transfer_buffer/small_set/co3d_anno/apple_train.jgz
+INFO 2025-07-06 10:58:55,298 co3d.py: 159: Training: Co3D Data size: 0
+INFO 2025-07-06 10:58:55,299 co3d.py: 160: Training: Co3D Data dataset length: 100000
+INFO 2025-07-06 10:59:36,754 general.py: 222: GPU SEED: 4200
+INFO 2025-07-06 10:59:36,760 trainer.py: 250: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-06 10:59:37,074 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-06 11:00:03,385 general.py: 222: GPU SEED: 4200
+INFO 2025-07-06 11:00:03,389 trainer.py: 250: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-06 11:00:03,735 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-06 11:01:00,720 trainer.py: 257: [Start] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-06 11:01:00,950 trainer.py: 264: [Done] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-06 11:01:13,142 trainer.py: 270: Model summary saved to logs/model.txt
+INFO 2025-07-06 11:01:13,164 trainer.py: 281: Successfully initialized all training components: model, loss function, optimizer, and etc.
+INFO 2025-07-06 11:01:13,285 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-06 11:01:13,680 co3d.py: 159: Test: Co3D Data size: 49
+INFO 2025-07-06 11:01:13,680 co3d.py: 160: Test: Co3D Data dataset length: 10000
+INFO 2025-07-06 11:01:13,713 co3d.py: 126: CO3D_DIR is /fsx-repligen/jianyuan/transfer_buffer/small_set/co3d/
+ERROR 2025-07-06 11:01:13,715 co3d.py: 143: Annotation file not found: /fsx-repligen/jianyuan/transfer_buffer/small_set/co3d_anno/apple_train.jgz
+INFO 2025-07-06 11:01:13,716 co3d.py: 159: Training: Co3D Data size: 0
+INFO 2025-07-06 11:01:13,716 co3d.py: 160: Training: Co3D Data dataset length: 100000
+INFO 2025-07-06 11:01:29,591 general.py: 222: GPU SEED: 4200
