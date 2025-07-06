@@ -150,7 +150,7 @@ skyseg.onnx
 *.egg-info
 
 # outputs
-./outputs/*
+outputs/*
 
 # .vscode
-./.vscode/*
+.vscode/*
