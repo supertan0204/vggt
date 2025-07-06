@@ -151,3 +151,6 @@ skyseg.onnx
 
 # outputs
 ./outputs/*
+
+# .vscode
+./.vscode/*
