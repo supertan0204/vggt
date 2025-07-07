@@ -88,3 +88,9 @@ ERROR 2025-07-06 11:01:13,715 co3d.py: 143: Annotation file not found: /fsx-repl
 INFO 2025-07-06 11:01:13,716 co3d.py: 159: Training: Co3D Data size: 0
 INFO 2025-07-06 11:01:13,716 co3d.py: 160: Training: Co3D Data dataset length: 100000
 INFO 2025-07-06 11:01:29,591 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 02:24:25,741 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 02:24:25,742 trainer.py: 250: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-07 02:24:26,455 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-07 02:25:29,756 trainer.py: 257: [Start] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 02:25:30,288 trainer.py: 264: [Done] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 02:25:45,500 trainer.py: 270: Model summary saved to logs/model.txt

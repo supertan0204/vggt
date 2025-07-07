@@ -13,6 +13,147 @@ from training.train_utils.general import check_and_fix_inf_nan
 from math import ceil, floor
 
 
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+#
+# This source code is licensed under the license found in the
+# LICENSE file in the root directory of this source tree.
+
+
+from dataclasses import dataclass, field
+from typing import Callable, Mapping, Any
+import torch
+import logging
+import torch.nn.functional as F
+from training.perceptual import PerceptualLoss
+
+
+@dataclass(eq=False)
+class GaussianLoss:
+    """
+    """
+    def __init__(self, weights, enable_perceptual=True, enable_mse=True):
+        self.weights = weights
+        self.enable_perceptual = enable_perceptual
+        self.enable_mse = enable_mse
+        if self.enable_perceptual:
+            self.perceptual_loss = PerceptualLoss(device="cuda")
+        
+    
+    def __call__(self, predictions, gt) -> torch.Tensor:
+        return self.forward(predictions, gt)
+
+    def forward(self, predictions, gt) -> torch.Tensor:
+        """
+        Compute the total loss.
+        """
+        lam = 0.
+        mu = 0.
+        mse_loss = 0.
+        perceptual_loss = 0.
+        if not self.enable_perceptual and not self.enable_mse:
+            raise ValueError("At least one type of loss must be enabled!")
+        if self.enable_mse:
+            mse_loss = self._compute_mse_loss(predictions, gt)
+            mu = self.weights.mse
+        if self.enable_perceptual:
+            perceptual_loss = self._compute_perceptual_loss(predictions, gt)
+            lam = self.weights.perceptual
+        total_loss = lam * mse_loss + mu * perceptual_loss
+        return total_loss
+        
+    
+    def _compute_mse_loss(self, predictions, gt) -> torch.Tensor:
+        """
+        Compute the MSE Loss.
+        Arguments:
+            predictions: Dictionary 
+        """
+        scene_list, B = self._parse_predictions(predictions)
+        gt_list, _ = self._parse_gt(gt)
+        total_mse_loss = 0
+        for i in range(B):
+            total_mse_loss += self._mse_loss_for_one_scene(scene_list[i], gt_list[i])
+        avg_mse_loss = total_mse_loss / B
+        # logging.info(f"MSE Loss: {avg_mse_loss}")
+        return avg_mse_loss
+    
+    def _compute_perceptual_loss(self, predictions, gt):
+        """
+        Compute the Perceptual Loss.
+        Arguments:
+            predictions: Dictionary 
+        """
+        scene_list, B = self._parse_predictions(predictions)
+        gt_list, _ = self._parse_gt(gt)
+        
+        total_perceptual_loss = 0
+        for i in range(B):
+            total_perceptual_loss += self._perceptual_loss_for_one_scene(scene_list[i], gt_list[i], self.perceptual_loss)
+        avg_perceptual_loss = total_perceptual_loss / B
+        # logging.info(f"Perceptual Loss: {avg_perceptual_loss}")
+        return avg_perceptual_loss
+    
+    @staticmethod
+    def _perceptual_loss_for_one_scene(predicted_scene_tensor, gt_scene_tensor, perceptual_loss):
+        # Ensure tensors are of the same shape
+        if gt_scene_tensor.shape[1] != 3: # indicates S, H, W, 3
+            gt_scene_tensor = gt_scene_tensor.permute(0, 3, 1, 2)
+        if predicted_scene_tensor.shape[1] != 3: # indicates S, H, W, 3
+            predicted_scene_tensor = predicted_scene_tensor.permute(0, 3, 1, 2)
+        if predicted_scene_tensor.shape != gt_scene_tensor.shape:
+            raise ValueError(f"Shape mismatch: predicted tensor shape {predicted_scene_tensor.shape} does not match ground truth shape {gt_scene_tensor.shape}")
+        result = perceptual_loss(predicted_scene_tensor, gt_scene_tensor)
+        logging.info(f"perceptual loss for one scene: {result}")
+        return result
+        
+    @staticmethod   
+    def _mse_loss_for_one_scene(predicted_scene_tensor, gt_scene_tensor):
+        """
+        Compute the MSE loss of a single scene given prediction and ground truth
+        Arguments:
+            predicted_scene_tensor: tensor with shape (S, 3, H, W)
+            gt_scene_tensor: tensor with shape (S, 3, H, W)
+        Returns:
+            mse_loss: The computed MSE loss (scalar)
+        """
+        # Ensure are all tensors
+        assert isinstance(predicted_scene_tensor, torch.Tensor) and isinstance(gt_scene_tensor, torch.Tensor)
+        
+        # Ensure tensors are of the same shape
+        if gt_scene_tensor.shape[1] != 3: # indicates S, H, W, 3
+            gt_scene_tensor = gt_scene_tensor.permute(0, 3, 1, 2)
+        if predicted_scene_tensor.shape[1] != 3: # indicates S, H, W, 3
+            predicted_scene_tensor = predicted_scene_tensor.permute(0, 3, 1, 2)
+        if predicted_scene_tensor.shape != gt_scene_tensor.shape:
+            raise ValueError(f"Shape mismatch: predicted tensor shape {predicted_scene_tensor.shape} does not match ground truth shape {gt_scene_tensor.shape}")
+
+
+        # Compute MSE loss
+        mse_loss = F.mse_loss(predicted_scene_tensor, gt_scene_tensor)
+        
+        return mse_loss
+
+        
+        
+    def _parse_gt(self, gt):
+        if type(gt) == list:
+            gt_tensor_list = [torch.Tensor(item).to("cuda") for item in gt]
+            return gt_tensor_list, len(gt)
+        else:
+            raise NotImplementedError()
+    
+    def _parse_predictions(self, predictions):
+        """
+        Parse the predictions dictionary to extract necessary components.
+        Arguments:
+            predictions: List of dictionary containing model outputs.
+        """
+        scene_list = [predictions[i]["renders"] for i in range(len(predictions))] # each element should have shape [S, H, W, 3], different from vggt input [S, 3, H, W]
+        B = len(scene_list)
+        return scene_list, B
+        
+
 @dataclass(eq=False)
 class MultitaskLoss(torch.nn.Module):
     """
@@ -21,7 +162,7 @@ class MultitaskLoss(torch.nn.Module):
     Supports:
     - Camera loss
     - Depth loss 
-    - Point loss
+    - Point loss 
     - Tracking loss (not cleaned yet, dirty code is at the bottom of this file)
     """
     def __init__(self, camera=None, depth=None, point=None, track=None, **kwargs):
