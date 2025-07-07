@@ -99,7 +99,8 @@ loss:
     gradient_loss_fn: "grad" 
     valid_range: 0.98
     enable: False
-  point: null
+  point: 
+    enable: False
   # If you want to enable point, use the following config
   # point: 
   #   weight: 1.0
@@ -110,7 +111,7 @@ loss:
   rendering: 
     w_mse: 1.0 # the weight of mse loss
     w_perceptual: 1.0 # the weight of perceptual loss
-    enable: False
+    enable: True
 
 
 
@@ -125,6 +126,10 @@ optim:
 
   frozen_module_names:
       - "*aggregator*"  # example, freeze the aggregator
+      - "*point_head*"
+      - "*camera_head*"
+      - "*depth_head*"
+      - "*track_head*"
 
   amp:
     enabled: True

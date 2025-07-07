@@ -134,7 +134,7 @@ class Trainer:
         self._setup_dataloaders()
 
         self.model.to(self.device)
-        import pdb;pdb.set_trace()
+        # import pdb;pdb.set_trace()
         if self.scaler:
             copy_data_to_device(self.scaler, self.device)
 
@@ -253,7 +253,9 @@ class Trainer:
         self.steps = {'train': 0, 'val': 0}
 
         self.tb_writer = instantiate(self.logging_conf.tensorboard_writer, _recursive_=False)
+        logging.info("Instantiating the model, please wait patiently...")
         self.model = instantiate(self.model_conf, _recursive_=False)
+        logging.info("Model successfully loaded!")
         if getattr(self.optim_conf, "frozen_module_names", None):
             logging.info(
                 f"[Start] Freezing modules: {self.optim_conf.frozen_module_names} on rank {self.distributed_rank}"
@@ -861,13 +863,35 @@ class Trainer:
     ):
         # Forward run of the model
 
-        import pdb;pdb.set_trace()
-        y_hat = model(images = batch["images"])
+        y_hat = model(images = batch["images"]) # batch["images"] has shape B,S,3,H,W
         # Compute the loss
         loss_dict = self.loss(y_hat, batch)
-        
+        # import pdb;pdb.set_trace()
         # concatenate y_hat, loss_dict and batch for visualizations
         y_hat_batch = {**y_hat, **loss_dict, **batch}
+        
+        # write images for visualization
+        B = batch["images"].shape[0]
+        S = batch["images"].shape[1]
+        import numpy as np
+        for b in range(B):
+            for s in range(S):
+                # write original image
+                tensor_original = batch["images"][b,s].permute(1,2,0).detach().cpu()
+                tensor_original = tensor_original * 255.
+                tensor_np_original = tensor_original.numpy().astype(np.uint8)
+                image_original = Image.fromarray(tensor_np_original)
+                image_original.save(f"/home/ubuntu/nvme/xiyang/vggt/saving/original_{b}_{s}.png")
+                
+                # write predicted image
+                tensor_predicted = y_hat["renders"][b,s].permute(1,2,0).detach().cpu()
+                tensor_predicted = tensor_predicted * 255.
+                tensor_np_predicted = tensor_predicted.numpy().astype(np.uint8)
+                image_predicted = Image.fromarray(tensor_np_predicted)
+                image_predicted.save(f"/home/ubuntu/nvme/xiyang/vggt/saving/predicted_{b}_{s}.png")
+                
+        
+        import pdb;pdb.set_trace()
 
         self._update_and_log_scalars(y_hat_batch, phase, self.steps[phase], loss_meters)
 

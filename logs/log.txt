@@ -209,3 +209,91 @@ INFO 2025-07-07 04:20:12,994 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Trainin
 INFO 2025-07-07 04:20:21,147 co3d.py: 159: Training: Co3D Data size: 689
 INFO 2025-07-07 04:20:21,149 co3d.py: 160: Training: Co3D Data dataset length: 100000
 INFO 2025-07-07 04:23:03,183 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 12:30:08,284 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 12:30:08,284 trainer.py: 251: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-07 12:30:08,354 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-07 12:30:22,218 trainer.py: 258: [Start] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 12:30:22,350 trainer.py: 265: [Done] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 12:30:29,917 trainer.py: 271: Model summary saved to logs/model.txt
+INFO 2025-07-07 12:30:29,961 trainer.py: 282: Successfully initialized all training components: model, loss function, optimizer, and etc.
+INFO 2025-07-07 12:30:30,017 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 12:30:30,371 co3d.py: 159: Test: Co3D Data size: 49
+INFO 2025-07-07 12:30:30,371 co3d.py: 160: Test: Co3D Data dataset length: 10000
+INFO 2025-07-07 12:30:30,392 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 12:30:31,646 co3d.py: 159: Training: Co3D Data size: 689
+INFO 2025-07-07 12:30:31,646 co3d.py: 160: Training: Co3D Data dataset length: 100000
+INFO 2025-07-07 12:31:38,406 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 12:31:38,406 trainer.py: 251: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-07 12:31:38,464 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-07 12:31:49,165 trainer.py: 258: [Start] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 12:31:49,275 trainer.py: 265: [Done] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 12:31:54,470 trainer.py: 271: Model summary saved to logs/model.txt
+INFO 2025-07-07 12:31:54,494 trainer.py: 282: Successfully initialized all training components: model, loss function, optimizer, and etc.
+INFO 2025-07-07 12:31:54,534 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 12:31:54,796 co3d.py: 159: Test: Co3D Data size: 49
+INFO 2025-07-07 12:31:54,797 co3d.py: 160: Test: Co3D Data dataset length: 10000
+INFO 2025-07-07 12:31:54,814 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 12:32:07,784 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 12:32:07,785 trainer.py: 251: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-07 12:32:07,844 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-07 12:32:07,845 trainer.py: 256: Instantiating the model, please wait patiently...
+INFO 2025-07-07 12:32:18,925 trainer.py: 258: Model successfully loaded!
+INFO 2025-07-07 12:32:18,926 trainer.py: 260: [Start] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 12:32:19,035 trainer.py: 267: [Done] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 12:32:38,757 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 12:32:38,758 trainer.py: 251: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-07 12:32:38,817 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-07 12:32:38,818 trainer.py: 256: Instantiating the model, please wait patiently...
+INFO 2025-07-07 12:32:49,707 trainer.py: 258: Model successfully loaded!
+INFO 2025-07-07 12:32:49,708 trainer.py: 260: [Start] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 12:32:49,814 trainer.py: 267: [Done] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 12:32:55,149 trainer.py: 273: Model summary saved to logs/model.txt
+INFO 2025-07-07 12:32:55,180 trainer.py: 284: Successfully initialized all training components: model, loss function, optimizer, and etc.
+INFO 2025-07-07 12:32:55,224 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 12:32:55,499 co3d.py: 159: Test: Co3D Data size: 49
+INFO 2025-07-07 12:32:55,499 co3d.py: 160: Test: Co3D Data dataset length: 10000
+INFO 2025-07-07 12:32:55,518 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 12:32:56,632 co3d.py: 159: Training: Co3D Data size: 689
+INFO 2025-07-07 12:32:56,632 co3d.py: 160: Training: Co3D Data dataset length: 100000
+INFO 2025-07-07 12:33:03,734 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 12:35:23,557 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 12:35:23,557 trainer.py: 251: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-07 12:35:23,615 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-07 12:35:23,616 trainer.py: 256: Instantiating the model, please wait patiently...
+INFO 2025-07-07 12:35:34,299 trainer.py: 258: Model successfully loaded!
+INFO 2025-07-07 12:35:34,299 trainer.py: 260: [Start] Freezing modules: ['*aggregator*', '*point_head*', '*camera_head*', '*depth_head*', '*track_head*'] on rank 0
+INFO 2025-07-07 12:35:34,486 trainer.py: 267: [Done] Freezing modules: ['*aggregator*', '*point_head*', '*camera_head*', '*depth_head*', '*track_head*'] on rank 0
+INFO 2025-07-07 12:35:39,739 trainer.py: 273: Model summary saved to logs/model.txt
+INFO 2025-07-07 12:35:39,761 trainer.py: 284: Successfully initialized all training components: model, loss function, optimizer, and etc.
+INFO 2025-07-07 12:35:39,801 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 12:35:40,014 co3d.py: 159: Test: Co3D Data size: 49
+INFO 2025-07-07 12:35:40,014 co3d.py: 160: Test: Co3D Data dataset length: 10000
+INFO 2025-07-07 12:35:40,031 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 12:35:41,097 co3d.py: 159: Training: Co3D Data size: 689
+INFO 2025-07-07 12:35:41,098 co3d.py: 160: Training: Co3D Data dataset length: 100000
+INFO 2025-07-07 12:35:47,089 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 12:36:01,200 loss.py: 130: perceptual loss for one scene: 0.9786353707313538
+INFO 2025-07-07 12:36:01,203 loss.py: 112: total_mse_loss: 0.3628820478916168
+INFO 2025-07-07 12:36:01,205 loss.py: 113: total_perceptual_loss: 0.9786353707313538
+INFO 2025-07-07 12:37:01,330 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 12:37:01,330 trainer.py: 251: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-07 12:37:01,391 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-07 12:37:01,392 trainer.py: 256: Instantiating the model, please wait patiently...
+INFO 2025-07-07 12:37:12,551 trainer.py: 258: Model successfully loaded!
+INFO 2025-07-07 12:37:12,552 trainer.py: 260: [Start] Freezing modules: ['*aggregator*', '*point_head*', '*camera_head*', '*depth_head*', '*track_head*'] on rank 0
+INFO 2025-07-07 12:37:12,731 trainer.py: 267: [Done] Freezing modules: ['*aggregator*', '*point_head*', '*camera_head*', '*depth_head*', '*track_head*'] on rank 0
+INFO 2025-07-07 12:37:18,084 trainer.py: 273: Model summary saved to logs/model.txt
+INFO 2025-07-07 12:37:18,114 trainer.py: 284: Successfully initialized all training components: model, loss function, optimizer, and etc.
+INFO 2025-07-07 12:37:18,156 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 12:37:18,445 co3d.py: 159: Test: Co3D Data size: 49
+INFO 2025-07-07 12:37:18,445 co3d.py: 160: Test: Co3D Data dataset length: 10000
+INFO 2025-07-07 12:37:18,463 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 12:37:19,529 co3d.py: 159: Training: Co3D Data size: 689
+INFO 2025-07-07 12:37:19,529 co3d.py: 160: Training: Co3D Data dataset length: 100000
+INFO 2025-07-07 12:37:27,597 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 12:37:41,404 loss.py: 130: perceptual loss for one scene: 0.9786353707313538
+INFO 2025-07-07 12:37:41,406 loss.py: 112: total_mse_loss: 0.3628820478916168
+INFO 2025-07-07 12:37:41,409 loss.py: 113: total_perceptual_loss: 0.9786353707313538
+INFO 2025-07-07 12:38:28,442 loss.py: 130: perceptual loss for one scene: 0.9464814066886902
+INFO 2025-07-07 12:38:28,445 loss.py: 112: total_mse_loss: 0.3099175989627838
+INFO 2025-07-07 12:38:28,447 loss.py: 113: total_perceptual_loss: 0.9464814066886902

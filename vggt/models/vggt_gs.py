@@ -98,7 +98,8 @@ class VGGT_GS(VGGT):
                 predictions["pose_enc"] = pose_enc_list[-1]  # pose encoding of the last iteration 
 
             outputs = self._render_gs(predictions)
-            return outputs
+            predictions["renders"] = outputs
+            return predictions
              
     def freeze(self):
         """
@@ -158,15 +159,15 @@ class VGGT_GS(VGGT):
         # TODO: Remove this part, this is just test
         world_points = predictions["world_points"]
 
-        # focal = 0.5*float(W) / math.tan(math.pi/4.)
-        # K = torch.tensor(
-        #     [
-        #         [focal, 0, W / 2],
-        #         [0, focal, H / 2],
-        #         [0, 0, 1],
-        #     ],
-        #     device="cuda",
-        # )
+        focal = 0.5*float(W) / math.tan(math.pi/4.)
+        K = torch.tensor(
+            [
+                [focal, 0, W / 2],
+                [0, focal, H / 2],
+                [0, 0, 1],
+            ],
+            device="cuda",
+        )
         # print(f"K: {K}")
         # for b in range(B):
         #     for s in range(S):
@@ -179,7 +180,7 @@ class VGGT_GS(VGGT):
             meta = []
             for s in range(S):
                 # print(f"...........{world_points.shape}..........")
-                import pdb;pdb.set_trace()
+                # import pdb;pdb.set_trace()
                 r, a, m = rasterization(
                 # means=means[b,s],
                 means=world_points[b,s].view(H*W, 3),
@@ -206,6 +207,7 @@ class VGGT_GS(VGGT):
             batch_output["alphas"] = alphas
             batch_output["meta"] = meta
             batch_output["gs_conf"] = gs_confs[b]
-            outputs.append(batch_output)
+            # outputs.append(batch_output)
+            outputs.append(renders.permute(0,3,1,2))
 
-        return outputs
+        return torch.stack(outputs, dim=0)
