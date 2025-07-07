@@ -94,3 +94,118 @@ INFO 2025-07-07 02:24:26,455 tb_writer.py:  45: TensorBoard SummaryWriter instan
 INFO 2025-07-07 02:25:29,756 trainer.py: 257: [Start] Freezing modules: ['*aggregator*'] on rank 0
 INFO 2025-07-07 02:25:30,288 trainer.py: 264: [Done] Freezing modules: ['*aggregator*'] on rank 0
 INFO 2025-07-07 02:25:45,500 trainer.py: 270: Model summary saved to logs/model.txt
+INFO 2025-07-07 02:37:31,000 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 02:37:31,001 trainer.py: 250: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-07 02:37:31,111 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-07 02:38:35,201 trainer.py: 257: [Start] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 02:38:35,529 trainer.py: 264: [Done] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 02:38:48,910 trainer.py: 270: Model summary saved to logs/model.txt
+INFO 2025-07-07 02:38:49,271 trainer.py: 281: Successfully initialized all training components: model, loss function, optimizer, and etc.
+INFO 2025-07-07 02:38:49,364 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 02:38:49,660 co3d.py: 159: Test: Co3D Data size: 49
+INFO 2025-07-07 02:38:49,667 co3d.py: 160: Test: Co3D Data dataset length: 10000
+INFO 2025-07-07 02:38:49,725 co3d.py: 126: CO3D_DIR is /fsx-repligen/jianyuan/transfer_buffer/small_set/co3d/
+ERROR 2025-07-07 02:38:49,728 co3d.py: 143: Annotation file not found: /fsx-repligen/jianyuan/transfer_buffer/small_set/co3d_anno/apple_train.jgz
+INFO 2025-07-07 02:38:49,729 co3d.py: 159: Training: Co3D Data size: 0
+INFO 2025-07-07 02:38:49,729 co3d.py: 160: Training: Co3D Data dataset length: 100000
+INFO 2025-07-07 02:39:08,915 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 02:41:11,747 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 02:41:11,750 trainer.py: 250: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-07 02:41:12,091 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-07 02:42:27,484 trainer.py: 257: [Start] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 02:42:28,179 trainer.py: 264: [Done] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 02:42:42,438 trainer.py: 270: Model summary saved to logs/model.txt
+INFO 2025-07-07 02:42:43,041 trainer.py: 281: Successfully initialized all training components: model, loss function, optimizer, and etc.
+INFO 2025-07-07 02:42:43,173 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 02:42:43,596 co3d.py: 159: Test: Co3D Data size: 49
+INFO 2025-07-07 02:42:43,602 co3d.py: 160: Test: Co3D Data dataset length: 10000
+INFO 2025-07-07 02:42:43,653 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 02:42:49,053 co3d.py: 159: Training: Co3D Data size: 689
+INFO 2025-07-07 02:42:49,071 co3d.py: 160: Training: Co3D Data dataset length: 100000
+INFO 2025-07-07 02:43:09,532 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 02:55:15,034 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 02:55:15,051 trainer.py: 250: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-07 02:55:15,244 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-07 02:56:14,402 trainer.py: 257: [Start] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 02:56:14,557 trainer.py: 264: [Done] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 02:56:28,108 trainer.py: 270: Model summary saved to logs/model.txt
+INFO 2025-07-07 02:56:29,072 trainer.py: 281: Successfully initialized all training components: model, loss function, optimizer, and etc.
+INFO 2025-07-07 02:56:29,257 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 02:56:30,200 co3d.py: 159: Test: Co3D Data size: 49
+INFO 2025-07-07 02:56:30,201 co3d.py: 160: Test: Co3D Data dataset length: 10000
+INFO 2025-07-07 02:56:30,227 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 02:56:34,309 co3d.py: 159: Training: Co3D Data size: 689
+INFO 2025-07-07 02:56:34,310 co3d.py: 160: Training: Co3D Data dataset length: 100000
+INFO 2025-07-07 02:56:51,095 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 02:57:46,686 general.py: 117: Train Epoch: [0][      0/1000000] | Batch Time: 55.5698 (55.5698) | Data Time: 33.7091 (33.7091) | Mem (GB): 19.0000 (19.0000) | Time Elapsed: 00d 00h 02m | Loss/train_loss_objective: 0.9363 (0.7457) | Loss/train_loss_camera: 0.9994 (0.8144) | Loss/train_loss_T: 0.5302 (0.3193) | Loss/train_loss_R: 0.3274 (0.3395) | Loss/train_loss_FL: 0.2835 (0.3112) | Loss/train_loss_conf_depth: 0.3567 (0.2153) | Loss/train_loss_reg_depth: 0.2611 (0.1837) | Loss/train_loss_grad_depth: 0.0031 (0.0032) | Grad/aggregator: 0.0000 (0.0000) | Grad/depth: 4.3658 (4.3658) | Grad/camera: 16.4281 (16.4281)
+INFO 2025-07-07 03:14:36,408 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 03:14:36,409 trainer.py: 250: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-07 03:14:36,490 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-07 03:15:23,086 trainer.py: 257: [Start] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 03:15:23,209 trainer.py: 264: [Done] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 03:15:32,712 trainer.py: 270: Model summary saved to logs/model.txt
+INFO 2025-07-07 03:15:33,631 trainer.py: 281: Successfully initialized all training components: model, loss function, optimizer, and etc.
+INFO 2025-07-07 03:15:33,845 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 03:15:34,767 co3d.py: 159: Test: Co3D Data size: 49
+INFO 2025-07-07 03:15:34,778 co3d.py: 160: Test: Co3D Data dataset length: 10000
+INFO 2025-07-07 03:15:34,835 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 03:15:37,506 co3d.py: 159: Training: Co3D Data size: 689
+INFO 2025-07-07 03:15:37,510 co3d.py: 160: Training: Co3D Data dataset length: 100000
+INFO 2025-07-07 03:15:50,453 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 03:37:26,540 general.py: 117: Train Epoch: [0][      0/1000000] | Batch Time: 1296.0593 (1296.0593) | Data Time: 32.6359 (32.6359) | Mem (GB): 19.0000 (19.0000) | Time Elapsed: 00d 00h 22m | Loss/train_loss_objective: 0.9363 (0.7457) | Loss/train_loss_camera: 0.9994 (0.8144) | Loss/train_loss_T: 0.5302 (0.3193) | Loss/train_loss_R: 0.3274 (0.3395) | Loss/train_loss_FL: 0.2835 (0.3112) | Loss/train_loss_conf_depth: 0.3567 (0.2153) | Loss/train_loss_reg_depth: 0.2611 (0.1837) | Loss/train_loss_grad_depth: 0.0031 (0.0032) | Grad/aggregator: 0.0000 (0.0000) | Grad/depth: 4.3658 (4.3658) | Grad/camera: 16.4281 (16.4281)
+INFO 2025-07-07 03:39:07,022 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 03:39:07,038 trainer.py: 250: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-07 03:39:07,298 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-07 03:40:03,086 trainer.py: 257: [Start] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 03:40:03,270 trainer.py: 264: [Done] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 03:40:12,712 trainer.py: 270: Model summary saved to logs/model.txt
+INFO 2025-07-07 03:40:13,514 trainer.py: 281: Successfully initialized all training components: model, loss function, optimizer, and etc.
+INFO 2025-07-07 03:40:13,677 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 03:40:14,195 co3d.py: 159: Test: Co3D Data size: 49
+INFO 2025-07-07 03:40:14,200 co3d.py: 160: Test: Co3D Data dataset length: 10000
+INFO 2025-07-07 03:40:14,243 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 03:40:17,880 co3d.py: 159: Training: Co3D Data size: 689
+INFO 2025-07-07 03:40:17,881 co3d.py: 160: Training: Co3D Data dataset length: 100000
+INFO 2025-07-07 03:40:33,094 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 04:01:32,268 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 04:01:32,273 trainer.py: 250: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-07 04:01:32,457 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-07 04:04:21,245 trainer.py: 257: [Start] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 04:04:21,400 trainer.py: 264: [Done] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 04:04:50,522 trainer.py: 270: Model summary saved to logs/model.txt
+INFO 2025-07-07 04:04:50,651 trainer.py: 281: Successfully initialized all training components: model, loss function, optimizer, and etc.
+INFO 2025-07-07 04:04:50,708 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 04:04:52,127 co3d.py: 159: Test: Co3D Data size: 49
+INFO 2025-07-07 04:04:52,127 co3d.py: 160: Test: Co3D Data dataset length: 10000
+INFO 2025-07-07 04:04:52,154 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 04:04:56,466 co3d.py: 159: Training: Co3D Data size: 689
+INFO 2025-07-07 04:04:56,467 co3d.py: 160: Training: Co3D Data dataset length: 100000
+INFO 2025-07-07 04:05:20,936 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 04:08:01,286 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 04:08:01,288 trainer.py: 250: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-07 04:08:01,737 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-07 04:10:57,717 trainer.py: 257: [Start] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 04:10:57,908 trainer.py: 264: [Done] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 04:11:25,749 trainer.py: 270: Model summary saved to logs/model.txt
+INFO 2025-07-07 04:11:25,836 trainer.py: 281: Successfully initialized all training components: model, loss function, optimizer, and etc.
+INFO 2025-07-07 04:11:25,957 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 04:11:26,378 co3d.py: 159: Test: Co3D Data size: 49
+INFO 2025-07-07 04:11:26,378 co3d.py: 160: Test: Co3D Data dataset length: 10000
+INFO 2025-07-07 04:11:26,404 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 04:11:29,570 co3d.py: 159: Training: Co3D Data size: 689
+INFO 2025-07-07 04:11:29,571 co3d.py: 160: Training: Co3D Data dataset length: 100000
+INFO 2025-07-07 04:11:49,791 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 04:16:07,872 general.py: 222: GPU SEED: 4200
+INFO 2025-07-07 04:16:07,884 trainer.py: 251: Setting up components: Model, loss, optim, meters etc.
+INFO 2025-07-07 04:16:07,984 tb_writer.py:  45: TensorBoard SummaryWriter instantiated. Files will be stored in: logs/tensorboard
+INFO 2025-07-07 04:19:23,067 trainer.py: 258: [Start] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 04:19:24,667 trainer.py: 265: [Done] Freezing modules: ['*aggregator*'] on rank 0
+INFO 2025-07-07 04:20:09,474 trainer.py: 271: Model summary saved to logs/model.txt
+INFO 2025-07-07 04:20:09,728 trainer.py: 282: Successfully initialized all training components: model, loss function, optimizer, and etc.
+INFO 2025-07-07 04:20:10,001 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 04:20:12,850 co3d.py: 159: Test: Co3D Data size: 49
+INFO 2025-07-07 04:20:12,866 co3d.py: 160: Test: Co3D Data dataset length: 10000
+INFO 2025-07-07 04:20:12,994 co3d.py: 126: CO3D_DIR is /home/ubuntu/nvme/Training/co3d
+INFO 2025-07-07 04:20:21,147 co3d.py: 159: Training: Co3D Data size: 689
+INFO 2025-07-07 04:20:21,149 co3d.py: 160: Training: Co3D Data dataset length: 100000
+INFO 2025-07-07 04:23:03,183 general.py: 222: GPU SEED: 4200

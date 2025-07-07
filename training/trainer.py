@@ -134,6 +134,7 @@ class Trainer:
         self._setup_dataloaders()
 
         self.model.to(self.device)
+        import pdb;pdb.set_trace()
         if self.scaler:
             copy_data_to_device(self.scaler, self.device)
 
@@ -859,6 +860,8 @@ class Trainer:
         loss_meters: dict[str, AverageMeter],
     ):
         # Forward run of the model
+
+        import pdb;pdb.set_trace()
         y_hat = model(images = batch["images"])
         # Compute the loss
         loss_dict = self.loss(y_hat, batch)

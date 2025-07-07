@@ -5,7 +5,7 @@ exp_name: exp001
 img_size: 518
 num_workers: 0
 seed_value: 42
-accum_steps: 3
+accum_steps: 6
 patch_size: 14
 
 limit_train_batches: 800
@@ -26,8 +26,8 @@ data:
       dataset_configs:
         - _target_: training.data.datasets.co3d.Co3dDataset
           split: train
-          CO3D_DIR: /fsx-repligen/jianyuan/transfer_buffer/small_set/co3d/
-          CO3D_ANNOTATION_DIR: /fsx-repligen/jianyuan/transfer_buffer/small_set/co3d_anno
+          CO3D_DIR: /home/ubuntu/nvme/Training/co3d
+          CO3D_ANNOTATION_DIR: /home/ubuntu/nvme/Training/co3d_anno
   val:
     _target_: training.data.dynamic_dataloader.DynamicTorchDataset
     num_workers: ${num_workers}
@@ -93,17 +93,24 @@ loss:
   camera: 
     weight: 5.0
     loss_type: "l1" # The paper uses smooth l1 loss, but we found l1 loss is more stable than smooth l1 and l2 loss.  
+    enable: False
   depth:
     weight: 1.0
     gradient_loss_fn: "grad" 
     valid_range: 0.98
+    enable: False
   point: null
   # If you want to enable point, use the following config
   # point: 
   #   weight: 1.0
   #   gradient_loss_fn: "normal" 
   #   valid_range: 0.98
-  track: null   
+  track:
+    enable: False  
+  rendering: 
+    w_mse: 1.0 # the weight of mse loss
+    w_perceptual: 1.0 # the weight of perceptual loss
+    enable: False
 
 
 
@@ -134,6 +141,9 @@ optim:
       - module_name: ["camera"]
         max_norm: 1.0   # feel free to reduce this if you see instabilities
         norm_type: 2
+      - module_name: ["gs_head"]
+        max_norm: 1.0
+        norm_type: 2
   options:
     lr:
       - scheduler:
@@ -158,7 +168,7 @@ optim:
 max_epochs: 100
 
 model:
-  _target_: vggt.models.vggt.VGGT
+  _target_: vggt.models.vggt_gs.VGGT_GS
   enable_camera: True
   enable_depth: True
   enable_point: False

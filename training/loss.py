@@ -163,15 +163,17 @@ class MultitaskLoss(torch.nn.Module):
     - Camera loss
     - Depth loss 
     - Point loss 
+    - Rendering loss for Gaussian head
     - Tracking loss (not cleaned yet, dirty code is at the bottom of this file)
     """
-    def __init__(self, camera=None, depth=None, point=None, track=None, **kwargs):
+    def __init__(self, camera=None, depth=None, point=None, track=None, rendering=None, **kwargs):
         super().__init__()
         # Loss configuration dictionaries for each task
         self.camera = camera
         self.depth = depth
         self.point = point
         self.track = track
+        self.rendering = rendering
 
     def forward(self, predictions, batch) -> torch.Tensor:
         """
@@ -188,14 +190,14 @@ class MultitaskLoss(torch.nn.Module):
         loss_dict = {}
         
         # Camera pose loss - if pose encodings are predicted
-        if "pose_enc_list" in predictions:
+        if "pose_enc_list" in predictions and self.camera.enable:
             camera_loss_dict = compute_camera_loss(predictions, batch, **self.camera)   
             camera_loss = camera_loss_dict["loss_camera"] * self.camera["weight"]   
             total_loss = total_loss + camera_loss
             loss_dict.update(camera_loss_dict)
         
         # Depth estimation loss - if depth maps are predicted
-        if "depth" in predictions:
+        if "depth" in predictions and self.depth.enable:
             depth_loss_dict = compute_depth_loss(predictions, batch, **self.depth)
             depth_loss = depth_loss_dict["loss_conf_depth"] + depth_loss_dict["loss_reg_depth"] + depth_loss_dict["loss_grad_depth"]
             depth_loss = depth_loss * self.depth["weight"]
@@ -203,7 +205,7 @@ class MultitaskLoss(torch.nn.Module):
             loss_dict.update(depth_loss_dict)
 
         # 3D point reconstruction loss - if world points are predicted
-        if "world_points" in predictions:
+        if "world_points" in predictions and self.point.enable:
             point_loss_dict = compute_point_loss(predictions, batch, **self.point)
             point_loss = point_loss_dict["loss_conf_point"] + point_loss_dict["loss_reg_point"] + point_loss_dict["loss_grad_point"]
             point_loss = point_loss * self.point["weight"]
@@ -211,9 +213,11 @@ class MultitaskLoss(torch.nn.Module):
             loss_dict.update(point_loss_dict)
 
         # Tracking loss - not cleaned yet, dirty code is at the bottom of this file
-        if "track" in predictions:
+        if "track" in predictions and self.track.enable:
             raise NotImplementedError("Track loss is not cleaned up yet")
         
+        # if "rendering" in predictions and self.rendering.enable:
+            
         loss_dict["objective"] = total_loss
 
         return loss_dict

@@ -178,7 +178,7 @@ class VGGT_GS(VGGT):
             alphas = []
             meta = []
             for s in range(S):
-                print(f"...........{world_points.shape}..........")
+                # print(f"...........{world_points.shape}..........")
                 import pdb;pdb.set_trace()
                 r, a, m = rasterization(
                 # means=means[b,s],
