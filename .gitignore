@@ -159,4 +159,5 @@ saving/*
 
 ckpts/*
 
+# tensorboard logs
 logs/*
