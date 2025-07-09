@@ -108,11 +108,11 @@ class VGGT_GS(VGGT):
                 pose_enc_list = self.camera_head(aggregated_tokens_list)
                 predictions["pose_enc"] = pose_enc_list[-1]  # pose encoding of the last iteration 
 
-            outputs = self._render_gs(predictions)
+            outputs = self._render_gs(predictions, images)
             predictions["renders"] = outputs
             return predictions
     
-    def _render_gs(self, predictions: dict):
+    def _render_gs(self, predictions: dict, images: torch.Tensor):
         """
         Render 3DGS image based on model predictions.
         Args:
@@ -149,29 +149,24 @@ class VGGT_GS(VGGT):
         B, S, _, _ = extrinsics.shape
         extra_row = torch.tensor([0, 0, 0, 1], dtype=extrinsics.dtype, device=extrinsics.device).view(1, 1, 1, 4)
         viewmats = torch.cat((extrinsics, extra_row.expand(B, S, 1, 4)), dim=2) # B,S,4,4       
-        # for i in range(B):
-        #     for j in range(S):
-        #         print(viewmats[i,j])
-        # import pdb;pdb.set_trace()
-       
         outputs = []
         # TODO: Remove this part, this is just test
         world_points = predictions["world_points"]
 
-        focal = 0.5*float(W) / math.tan(math.pi/4.)
-        K = torch.tensor(
-            [
-                [focal, 0, W / 2],
-                [0, focal, H / 2],
-                [0, 0, 1],
-            ],
-            device="cuda",
-        )
+        # focal = 0.5*float(W) / math.tan(math.pi/4.)
+        # K = torch.tensor(
+        #     [
+        #         [focal, 0, W / 2],
+        #         [0, focal, H / 2],
+        #         [0, 0, 1],
+        #     ],
+        #     device="cuda",
+        # )
         # print(f"K: {K}")
-        for b in range(B):
-            for s in range(S):
-                print(intrinsics[b,s])
-                import pdb;pdb.set_trace()
+        # for b in range(B):
+        #     for s in range(S):
+        #         print(intrinsics[b,s])
+        #         import pdb;pdb.set_trace()
         # Render GS for multiple input views
         
         # assign global points by concating all pointmaps
@@ -180,6 +175,8 @@ class VGGT_GS(VGGT):
         global_scales = scales.view(B,-1,3)
         global_colors = colors.view(B,-1,3)
         global_opacities = opacities.view(B,-1,1)
+        
+        image_colors = images.view(B,-1,3)
         
         
         for b in range(B):
@@ -197,11 +194,12 @@ class VGGT_GS(VGGT):
                 means = global_points[b],
                 quats=global_quats[b],
                 scales=global_scales[b],
-                colors=global_colors[b],
+                # colors=global_colors[b],
+                colors=image_colors[b],
                 opacities=global_opacities[b].squeeze(),
                 viewmats=viewmats[b,s][None],
-                # Ks=intrinsics[b,s][None],
-                Ks = K[None],
+                Ks=intrinsics[b,s][None],
+                # Ks = K[None],
                 # opacities=opacities[b,s].squeeze(),
                 width=W,
                 height=H,

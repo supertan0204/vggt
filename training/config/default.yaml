@@ -83,8 +83,7 @@ logging:
 checkpoint:
   save_dir: logs/${exp_name}/ckpts
   save_freq: 5
-  # resume_checkpoint_path: /fsx-repligen/jianyuan/transfer_buffer/ckpts/model.pt
-  resume_checkpoint_path: null
+  resume_checkpoint_path: /home/ubuntu/nvme/xiyang/vggt/ckpts/model.pt
   strict: False
 
 
@@ -125,10 +124,10 @@ optim:
     weight_decay: 0.05
 
   frozen_module_names:
-      # - "*aggregator*"  # example, freeze the aggregator
+      - "*aggregator*"  # example, freeze the aggregator
       - "*point_head*"
       - "*camera_head*"
-      # - "*depth_head*"
+      - "*depth_head*"
       # - "*track_head*"
 
   amp:
@@ -137,9 +136,9 @@ optim:
   gradient_clip:
     _target_: training.train_utils.gradient_clip.GradientClipper
     configs:
-      - module_name: ["aggregator"]
-        max_norm: 1.0   # feel free to reduce this if you see instabilities
-        norm_type: 2
+      # - module_name: ["aggregator"]
+      #   max_norm: 1.0   # feel free to reduce this if you see instabilities
+      #   norm_type: 2
       # - module_name: ["depth"]
       #   max_norm: 1.0   # feel free to reduce this if you see instabilities
       #   norm_type: 2
@@ -173,9 +172,9 @@ optim:
 max_epochs: 100
 
 model:
-  _target_: vggt.models.vggt.VGGT
+  _target_: vggt.models.vggt_gs.VGGT_GS
   enable_camera: True
-  enable_depth: False
+  enable_depth: True
   enable_point: True
   enable_track: False
 

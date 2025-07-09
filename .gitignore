@@ -158,3 +158,5 @@ outputs/*
 saving/*
 
 ckpts/*
+
+logs/*
