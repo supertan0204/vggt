@@ -75,6 +75,7 @@ class DynamicTorchDataset(ABC):
             self.dataset.set_epoch(epoch)
 
         # Create and return the dataloader
+        assert self.collate_fn==None
         return DataLoader(
             self.dataset,
             num_workers=self.num_workers,

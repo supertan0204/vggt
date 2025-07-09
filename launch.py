@@ -8,5 +8,4 @@ with initialize(version_base=None, config_path="training/config"):
 
 trainer = Trainer(**cfg)
 trainer.run()
-import pdb;pdb.set_trace()
 m=1

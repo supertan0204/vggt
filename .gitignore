@@ -155,4 +155,6 @@ outputs/*
 # .vscode
 .vscode/*
 
-.saving/*
+saving/*
+
+ckpts/*

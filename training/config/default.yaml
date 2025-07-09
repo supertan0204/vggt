@@ -125,11 +125,11 @@ optim:
     weight_decay: 0.05
 
   frozen_module_names:
-      - "*aggregator*"  # example, freeze the aggregator
+      # - "*aggregator*"  # example, freeze the aggregator
       - "*point_head*"
       - "*camera_head*"
-      - "*depth_head*"
-      - "*track_head*"
+      # - "*depth_head*"
+      # - "*track_head*"
 
   amp:
     enabled: True
@@ -140,12 +140,12 @@ optim:
       - module_name: ["aggregator"]
         max_norm: 1.0   # feel free to reduce this if you see instabilities
         norm_type: 2
-      - module_name: ["depth"]
-        max_norm: 1.0   # feel free to reduce this if you see instabilities
-        norm_type: 2
-      - module_name: ["camera"]
-        max_norm: 1.0   # feel free to reduce this if you see instabilities
-        norm_type: 2
+      # - module_name: ["depth"]
+      #   max_norm: 1.0   # feel free to reduce this if you see instabilities
+      #   norm_type: 2
+      # - module_name: ["camera"]
+      #   max_norm: 1.0   # feel free to reduce this if you see instabilities
+      #   norm_type: 2
       - module_name: ["gs_head"]
         max_norm: 1.0
         norm_type: 2
@@ -173,10 +173,10 @@ optim:
 max_epochs: 100
 
 model:
-  _target_: vggt.models.vggt_gs.VGGT_GS
+  _target_: vggt.models.vggt.VGGT
   enable_camera: True
-  enable_depth: True
-  enable_point: False
+  enable_depth: False
+  enable_point: True
   enable_track: False
 
 

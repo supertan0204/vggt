@@ -134,7 +134,6 @@ class Trainer:
         self._setup_dataloaders()
 
         self.model.to(self.device)
-        # import pdb;pdb.set_trace()
         if self.scaler:
             copy_data_to_device(self.scaler, self.device)
 
@@ -540,7 +539,6 @@ class Trainer:
                 batch = self._process_batch(batch, 'val', local_data_ids)
             batch = copy_data_to_device(batch, self.device)
 
-            import pdb; pdb.set_trace()
             # compute output
             with torch.no_grad():
                 with torch.cuda.amp.autocast(
@@ -662,7 +660,6 @@ class Trainer:
             # measure data loading time
             data_time.update(time.time() - end)
             data_times.append(data_time.val)
-            
             with torch.cuda.amp.autocast(enabled=False):
                 batch = self._process_batch(batch)
 
@@ -860,13 +857,11 @@ class Trainer:
         model: nn.Module,
         phase: str,
         loss_meters: dict[str, AverageMeter],
-    ):
+    ): 
         # Forward run of the model
-
         y_hat = model(images = batch["images"]) # batch["images"] has shape B,S,3,H,W
         # Compute the loss
         loss_dict = self.loss(y_hat, batch)
-        # import pdb;pdb.set_trace()
         # concatenate y_hat, loss_dict and batch for visualizations
         y_hat_batch = {**y_hat, **loss_dict, **batch}
         
@@ -877,9 +872,8 @@ class Trainer:
         for b in range(B):
             for s in range(S):
                 # write original image
-                tensor_original = batch["images"][b,s].permute(1,2,0).detach().cpu()
-                tensor_original = tensor_original * 255.
-                tensor_np_original = tensor_original.numpy().astype(np.uint8)
+                tensor_original = batch["images"][b,s] * 255.
+                tensor_np_original = (tensor_original.permute(1,2,0).detach().cpu().numpy()).astype(np.uint8)
                 image_original = Image.fromarray(tensor_np_original)
                 image_original.save(f"/home/ubuntu/nvme/xiyang/vggt/saving/original_{b}_{s}.png")
                 
@@ -891,7 +885,6 @@ class Trainer:
                 image_predicted.save(f"/home/ubuntu/nvme/xiyang/vggt/saving/predicted_{b}_{s}.png")
                 
         
-        import pdb;pdb.set_trace()
 
         self._update_and_log_scalars(y_hat_batch, phase, self.steps[phase], loss_meters)
 

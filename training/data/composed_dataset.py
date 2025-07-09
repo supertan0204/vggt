@@ -103,7 +103,6 @@ class ComposedDataset(Dataset, ABC):
         # Retrieve the raw data batch from the appropriate base dataset
         batch = self.base_dataset[idx_tuple]
         seq_name = batch["seq_name"]
-
         # --- Data Conversion and Preparation ---
         # Convert numpy arrays to tensors
         images = torch.from_numpy(np.stack(batch["images"]).astype(np.float32)).contiguous()
@@ -139,6 +138,7 @@ class ComposedDataset(Dataset, ABC):
         sample = {
             "seq_name": seq_name,
             "ids": ids,
+            "image_paths": batch["image_paths"],
             "images": images,
             "depths": depths,
             "extrinsics": extrinsics,

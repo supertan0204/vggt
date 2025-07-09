@@ -36,7 +36,11 @@ class VGGT_GS(VGGT):
         """
         # might be useful to check https://github.com/OpenRobotLab/gs-lrm-unofficial/blob/6fe1104d5fe7176b866b877f3ff798b40849d0d0/src/model/encoder/encoder_lrm.py#L99
         # Initialize the parent VGGT class with embed_dim argument
-        super().__init__()  # Pass embed_dim to the parent class
+        super().__init__(enable_camera=enable_camera, 
+                         enable_depth=enable_depth,
+                         enable_point=enable_point,
+                         enable_track=enable_track
+                         )  # Pass embed_dim to the parent class
         if gs_pos_predict == "new_xyz":
             self.gs_head = DPTHead(
                 dim_in=2*embed_dim, 
@@ -82,6 +86,13 @@ class VGGT_GS(VGGT):
                     aggregated_tokens_list, images=images, patch_start_idx=patch_start_idx
                 )
                 predictions["world_points"] = pts3d
+                # import pdb;pdb.set_trace()
+                # import open3d as o3d
+                # points = pts3d[0,1].view(-1,3).detach().cpu().numpy()
+                # pcd = o3d.geometry.PointCloud()
+                # pcd.points = o3d.utility.Vector3dVector(points)
+                # o3d.io.write_point_cloud("points.ply", pcd)
+                
                 predictions["world_points_conf"] = pts3d_conf
             if self.gs_head is not None:
                 if self.gs_head.feature_only == True:
@@ -100,16 +111,6 @@ class VGGT_GS(VGGT):
             outputs = self._render_gs(predictions)
             predictions["renders"] = outputs
             return predictions
-             
-    def freeze(self):
-        """
-        Freeze the model parameters except for the GS head.
-        """
-        for name, param in self.named_parameters():
-            if "gs_head" not in name:
-                param.requires_grad = False
-            else:
-                param.requires_grad = True
     
     def _render_gs(self, predictions: dict):
         """
@@ -119,8 +120,6 @@ class VGGT_GS(VGGT):
         """
         # GS parameters
         B, S, H, W, _ = predictions["gs_features"].shape
-        # print(f"H,W={H,W}")
-        # import pdb; pdb.set_trace()
         gs_features = predictions["gs_features"].view(B, S, H*W, -1)
 
         means = gs_features[..., :3]  # BxSxHWx3
@@ -138,8 +137,8 @@ class VGGT_GS(VGGT):
         #     print(colors[0,0,i,:])
         #     import pdb;pdb.set_trace()
         opacities = gs_features[..., 13:14] # BxSxHWx1
-        opacities = torch.ones_like(opacities)
-        # opacities = torch.sigmoid(opacities)
+        # opacities = torch.ones_like(opacities)
+        opacities = torch.sigmoid(opacities)
         gs_confs = predictions["gs_conf"]
         gs_confs = torch.sigmoid(gs_confs)
 
@@ -169,31 +168,44 @@ class VGGT_GS(VGGT):
             device="cuda",
         )
         # print(f"K: {K}")
-        # for b in range(B):
-        #     for s in range(S):
-        #         print(intrinsics[b,s])
-        #         import pdb;pdb.set_trace()
+        for b in range(B):
+            for s in range(S):
+                print(intrinsics[b,s])
+                import pdb;pdb.set_trace()
         # Render GS for multiple input views
+        
+        # assign global points by concating all pointmaps
+        global_points = world_points.view(B,-1,3)
+        global_quats = quats.view(B,-1,4)
+        global_scales = scales.view(B,-1,3)
+        global_colors = colors.view(B,-1,3)
+        global_opacities = opacities.view(B,-1,1)
+        
+        
         for b in range(B):
             renders = []
             alphas = []
             meta = []
             for s in range(S):
                 # print(f"...........{world_points.shape}..........")
-                # import pdb;pdb.set_trace()
                 r, a, m = rasterization(
                 # means=means[b,s],
-                means=world_points[b,s].view(H*W, 3),
-                quats=quats[b,s],
-                scales=scales[b,s],
-                colors=colors[b,s],
-                viewmats=viewmats[b,s][None,:,:],
-                Ks=intrinsics[b,s][None],
-                # Ks = K[None],
-                opacities=opacities[b,s].squeeze(),
+                # means=world_points[b,s].view(H*W, 3),
+                # quats=quats[b,s],
+                # scales=scales[b,s],
+                # colors=colors[b,s],
+                means = global_points[b],
+                quats=global_quats[b],
+                scales=global_scales[b],
+                colors=global_colors[b],
+                opacities=global_opacities[b].squeeze(),
+                viewmats=viewmats[b,s][None],
+                # Ks=intrinsics[b,s][None],
+                Ks = K[None],
+                # opacities=opacities[b,s].squeeze(),
                 width=W,
                 height=H,
-                backgrounds=torch.tensor([0.0,0.0,0.0],device="cuda",dtype=torch.float32)
+                # backgrounds=torch.tensor([0.0,0.0,0.0],device="cuda",dtype=torch.float32)
                 )
                 renders.append(r.squeeze())
                 alphas.append(a.squeeze())

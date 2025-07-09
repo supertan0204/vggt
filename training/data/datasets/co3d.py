@@ -251,7 +251,6 @@ class Co3dDataset(BaseDataset):
                 target_image_shape,
                 filepath=filepath,
             )
-
             images.append(image)
             depths.append(depth_map)
             extrinsics.append(extri_opencv)
@@ -263,10 +262,10 @@ class Co3dDataset(BaseDataset):
             original_sizes.append(original_size)
 
         set_name = "co3d"
-
         batch = {
             "seq_name": set_name + "_" + seq_name,
             "ids": ids,
+            "image_paths": image_paths,
             "frame_num": len(extrinsics),
             "images": images,
             "depths": depths,
@@ -277,4 +276,5 @@ class Co3dDataset(BaseDataset):
             "point_masks": point_masks,
             "original_sizes": original_sizes,
         }
+        # print(f"image_paths: {image_paths}")
         return batch
