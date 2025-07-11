@@ -176,7 +176,7 @@ model:
   _target_: vggt.models.vggt_gs.VGGT_GS
   predict_enable:
    xyz: False
-   color: False
+   color: True
   enable_camera: True
   enable_depth: True
   enable_point: True

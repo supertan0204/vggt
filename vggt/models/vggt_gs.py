@@ -134,6 +134,7 @@ class VGGT_GS(VGGT):
         Args:
             cfg (dict): Configuration dictionary
         """
+        # import pdb;pdb.set_trace()
         gs_feature_dict = self.gs_feature_parser.parse_feature(predictions["gs_features"])
         
         means = gs_feature_dict["means"]
