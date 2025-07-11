@@ -863,7 +863,7 @@ class Trainer:
         # Forward run of the model
         y_hat = model(images = batch["images"]) # batch["images"] has shape B,S,3,H,W
         # Compute the loss
-        import pdb;pdb.set_trace()
+        
         loss_dict = self.loss(y_hat, batch)
         # concatenate y_hat, loss_dict and batch for visualizations
         y_hat_batch = {**y_hat, **loss_dict, **batch}
@@ -991,7 +991,27 @@ def get_chunk_from_data(data, chunk_id, num_chunks):
         # assert len(data) % num_chunks == 0
         start = (len(data) // num_chunks) * chunk_id
         end = (len(data) // num_chunks) * (chunk_id + 1)
+        if start == end:
+            end += 1
         return data[start:end]
+        # if chunk_id > num_chunks:
+        #     raise ValueError(f"chunk_id should not be greater than num_chunks, got chunk_id {chunk_id} and num_chunks {num_chunks}")
+        # chunk_size = len(data) // num_chunks
+        # remainder = len(data) % num_chunks
+
+        # if remainder == 0: 
+        #     start = chunk_id * chunk_size
+        #     end = start + chunk_size - 1 
+        # else:
+        #     if chunk_id < remainder:
+        #         start = chunk_id * (chunk_size + 1)
+        #         end = start + chunk_size
+        #     else:
+        #         # start = remainder * (chunk_size + 1) + (chunk_id - remainder) * chunk_size
+        #         start = remainder + chunk_id * chunk_size
+        #         end = start + chunk_size - 1
+        return data[start:end]
+        
     elif isinstance(data, Mapping):
         return {
             key: get_chunk_from_data(value, chunk_id, num_chunks)

@@ -5,7 +5,7 @@ exp_name: exp001
 img_size: 518
 num_workers: 0
 seed_value: 42
-accum_steps: 6
+accum_steps: 8
 patch_size: 14
 
 limit_train_batches: 800
@@ -16,6 +16,7 @@ data:
   train:
     _target_: training.data.dynamic_dataloader.DynamicTorchDataset
     num_workers: ${num_workers}
+    max_img_per_gpu: 36
     common_config:
       img_size: ${img_size}
       patch_size: ${patch_size}
@@ -174,8 +175,8 @@ max_epochs: 100
 model:
   _target_: vggt.models.vggt_gs.VGGT_GS
   predict_enable:
-   xyz: True
-   color: True
+   xyz: False
+   color: False
   enable_camera: True
   enable_depth: True
   enable_point: True
