@@ -213,7 +213,7 @@ class DPTHead(nn.Module):
 
             x = self.norm(x)
 
-            x = x.permute(0, 2, 1).reshape((x.shape[0], x.shape[-1], patch_h, patch_w))
+            x = x.permute(0, 2, 1).reshape((x.shape[0], x.shape[-1], patch_h, patch_w)).contiguous()
 
             x = self.projects[dpt_idx](x)
             if self.pos_embed:
@@ -255,7 +255,7 @@ class DPTHead(nn.Module):
         pos_embed = create_uv_grid(patch_w, patch_h, aspect_ratio=W / H, dtype=x.dtype, device=x.device)
         pos_embed = position_grid_to_embed(pos_embed, x.shape[1])
         pos_embed = pos_embed * ratio
-        pos_embed = pos_embed.permute(2, 0, 1)[None].expand(x.shape[0], -1, -1, -1)
+        pos_embed = pos_embed.permute(2, 0, 1)[None].expand(x.shape[0], -1, -1, -1).contiguous()
         return x + pos_embed
 
     def scratch_forward(self, features: List[torch.Tensor]) -> torch.Tensor:

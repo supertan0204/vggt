@@ -420,6 +420,7 @@ class Trainer:
             raise ValueError(f"Invalid mode: {mode}")
 
     def run_train(self):
+        logging.info("running training...")
         while self.epoch < self.max_epochs:
             set_seeds(self.seed_value + self.epoch * 100, self.max_epochs, self.distributed_rank)
             
@@ -457,6 +458,7 @@ class Trainer:
             f.write(json.dumps(stats) + "\n")
 
     def run_val(self):
+        logging.info("running val...")
         if not self.val_dataset:
             return
 
@@ -861,6 +863,7 @@ class Trainer:
         # Forward run of the model
         y_hat = model(images = batch["images"]) # batch["images"] has shape B,S,3,H,W
         # Compute the loss
+        import pdb;pdb.set_trace()
         loss_dict = self.loss(y_hat, batch)
         # concatenate y_hat, loss_dict and batch for visualizations
         y_hat_batch = {**y_hat, **loss_dict, **batch}
@@ -884,6 +887,8 @@ class Trainer:
                 image_predicted = Image.fromarray(tensor_np_predicted)
                 image_predicted.save(f"/home/ubuntu/nvme/xiyang/vggt/saving/predicted_{b}_{s}.png")
                 
+                del tensor_np_original
+                del tensor_np_predicted
         
 
         self._update_and_log_scalars(y_hat_batch, phase, self.steps[phase], loss_meters)

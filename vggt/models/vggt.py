@@ -60,17 +60,17 @@ class VGGT(nn.Module, PyTorchModelHubMixin):
             images = images.unsqueeze(0)
         
         # write to see images
-        B = images.shape[0]
-        S = images.shape[1]
-        H = images.shape[2]
-        W = images.shape[3]
+        # B = images.shape[0]
+        # S = images.shape[1]
+        # H = images.shape[2]
+        # W = images.shape[3]
         
-        for b in range(B):
-            for s in range(S):
-                img = images[b,s].permute(1,2,0)*255.
-                img_np = img.detach().cpu().numpy().astype(np.uint8)
-                image = Image.fromarray(img_np)
-                image.save(f"test_image_{b}_{s}.png")
+        # for b in range(B):
+        #     for s in range(S):
+        #         img = images[b,s].permute(1,2,0)*255.
+        #         img_np = img.detach().cpu().numpy().astype(np.uint8)
+        #         image = Image.fromarray(img_np)
+        #         image.save(f"test_image_{b}_{s}.png")
         # import pdb;pdb.set_trace()
             
         if query_points is not None and len(query_points.shape) == 2:

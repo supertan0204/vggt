@@ -60,23 +60,23 @@ logging:
     train:
       keys_to_log:
         - loss_objective
-        - loss_camera
-        - loss_T
-        - loss_R
-        - loss_FL
-        - loss_conf_depth
-        - loss_reg_depth
-        - loss_grad_depth
+        # - loss_camera
+        # - loss_T
+        # - loss_R
+        # - loss_FL
+        # - loss_conf_depth
+        # - loss_reg_depth
+        # - loss_grad_depth
     val:
       keys_to_log:
         - loss_objective
-        - loss_camera
-        - loss_T
-        - loss_R
-        - loss_FL
-        - loss_conf_depth
-        - loss_reg_depth
-        - loss_grad_depth
+        # - loss_camera
+        # - loss_T
+        # - loss_R
+        # - loss_FL
+        # - loss_conf_depth
+        # - loss_reg_depth
+        # - loss_grad_depth
 
 
 
@@ -173,11 +173,14 @@ max_epochs: 100
 
 model:
   _target_: vggt.models.vggt_gs.VGGT_GS
+  predict_enable:
+   xyz: True
+   color: True
   enable_camera: True
   enable_depth: True
   enable_point: True
   enable_track: False
-
+  
 
 distributed:
   # check https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html for options

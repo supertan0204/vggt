@@ -119,7 +119,7 @@ class EfficientUpdateFormer(nn.Module):
                 point_tokens = self.space_point2virtual_blocks[j](point_tokens, virtual_tokens, mask=mask)
 
                 space_tokens = torch.cat([point_tokens, virtual_tokens], dim=1)
-                tokens = space_tokens.view(B, T, N, -1).permute(0, 2, 1, 3)  # (B T) N C -> B N T C
+                tokens = space_tokens.view(B, T, N, -1).permute(0, 2, 1, 3).contiguous()  # (B T) N C -> B N T C
                 j += 1
 
         if self.add_space_attn:

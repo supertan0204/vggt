@@ -121,9 +121,9 @@ def compute_render_loss(
 def compute_perceptual_loss_for_one_scene(predicted_scene_tensor, gt_scene_tensor, perceptual_loss):
         # Ensure tensors are of the same shape
         if gt_scene_tensor.shape[1] != 3: # indicates S, H, W, 3
-            gt_scene_tensor = gt_scene_tensor.permute(0, 3, 1, 2)
+            gt_scene_tensor = gt_scene_tensor.permute(0, 3, 1, 2).contiguous()
         if predicted_scene_tensor.shape[1] != 3: # indicates S, H, W, 3
-            predicted_scene_tensor = predicted_scene_tensor.permute(0, 3, 1, 2)
+            predicted_scene_tensor = predicted_scene_tensor.permute(0, 3, 1, 2).contiguous()
         if predicted_scene_tensor.shape != gt_scene_tensor.shape:
             raise ValueError(f"Shape mismatch: predicted tensor shape {predicted_scene_tensor.shape} does not match ground truth shape {gt_scene_tensor.shape}")
         result = perceptual_loss(predicted_scene_tensor, gt_scene_tensor)
@@ -144,9 +144,9 @@ def compute_mse_loss_for_one_scene(predicted_scene_tensor, gt_scene_tensor):
         
         # Ensure tensors are of the same shape
     if gt_scene_tensor.shape[1] != 3: # indicates S, H, W, 3
-        gt_scene_tensor = gt_scene_tensor.permute(0, 3, 1, 2)
+        gt_scene_tensor = gt_scene_tensor.permute(0, 3, 1, 2).contiguous()
     if predicted_scene_tensor.shape[1] != 3: # indicates S, H, W, 3
-        predicted_scene_tensor = predicted_scene_tensor.permute(0, 3, 1, 2)
+        predicted_scene_tensor = predicted_scene_tensor.permute(0, 3, 1, 2).contiguous()
     if predicted_scene_tensor.shape != gt_scene_tensor.shape:
         raise ValueError(f"Shape mismatch: predicted tensor shape {predicted_scene_tensor.shape} does not match ground truth shape {gt_scene_tensor.shape}")
 

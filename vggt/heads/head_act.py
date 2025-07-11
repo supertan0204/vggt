@@ -71,7 +71,7 @@ def activate_head(out, activation="norm_exp", conf_activation="expp1"):
         Tuple of (3D points tensor, confidence tensor)
     """
     # Move channels from last dim to the 4th dimension => (B, H, W, C)
-    fmap = out.permute(0, 2, 3, 1)  # B,H,W,C expected
+    fmap = out.permute(0, 2, 3, 1).contiguous()  # B,H,W,C expected
 
     # Split into xyz (first C-1 channels) and confidence (last channel)
     xyz = fmap[:, :, :, :-1]

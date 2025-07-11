@@ -48,7 +48,7 @@ class PerceptualLoss(nn.Module):
         with torch.no_grad():
             for i, layer_idx in enumerate(layer_indices):
                 # Set weights
-                weights = torch.from_numpy(vgg_layers[layer_idx][0][0][2][0][0]).permute(3, 2, 0, 1)
+                weights = torch.from_numpy(vgg_layers[layer_idx][0][0][2][0][0]).permute(3, 2, 0, 1).contiguous()
                 self.vgg.features[layer_idx].weight = nn.Parameter(weights, requires_grad=False)
                 
                 # Set biases

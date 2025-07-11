@@ -107,7 +107,7 @@ class ComposedDataset(Dataset, ABC):
         # Convert numpy arrays to tensors
         images = torch.from_numpy(np.stack(batch["images"]).astype(np.float32)).contiguous()
         # Normalize images from [0, 255] to [0, 1]
-        images = images.permute(0,3,1,2).to(torch.get_default_dtype()).div(255)
+        images = images.permute(0,3,1,2).contiguous().to(torch.get_default_dtype()).div(255)
 
         # Convert other data to tensors with appropriate types
         depths = torch.from_numpy(np.stack(batch["depths"]).astype(np.float32))
