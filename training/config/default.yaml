@@ -76,7 +76,7 @@ logging:
   scalar_keys_to_log:
     train:
       keys_to_log:
-        - loss_objective
+        - objective
         # - loss_camera
         # - loss_T
         # - loss_R
@@ -86,7 +86,7 @@ logging:
         # - loss_grad_depth
     val:
       keys_to_log:
-        - loss_objective
+        - objective
         # - loss_camera
         # - loss_T
         # - loss_R

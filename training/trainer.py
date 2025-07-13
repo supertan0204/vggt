@@ -789,7 +789,7 @@ class Trainer:
 
 
                 loss = loss_dict["objective"]
-                loss_key = f"Loss/{phase}_loss_objective"
+                loss_key = f"Loss/{phase}_objective"
                 batch_size = chunked_batch["images"].shape[0]
 
                 if not math.isfinite(loss.item()):
@@ -913,9 +913,8 @@ class Trainer:
     ) -> None:
         keys_to_log = self._get_scalar_log_keys(phase)
         batch_size = batch['extrinsics'].shape[0]
-        import pdb;pdb.set_trace()
         for key in keys_to_log:
-            if key in batch:
+            if key in batch.keys():
                 value = batch[key].item() if torch.is_tensor(batch[key]) else batch[key]
                 loss_meters[f"Loss/{phase}_{key}"].update(value, batch_size)
                 if step % self.logging_conf.log_freq == 0:
