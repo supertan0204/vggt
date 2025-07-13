@@ -1,4 +1,5 @@
 import torch
+SCALE_MULTIPLIER = 10.0
 
 class Parser_GS():
     def __init__(self, mode):
@@ -30,8 +31,9 @@ class Parser_GS():
             quats = gs_features[..., 6:10]
             colors = gs_features[..., 10:13]
             opacities = gs_features[..., 13:14]
+            
 
-            scales = torch.relu(scales)
+            scales = torch.sigmoid(scales)
             colors = torch.sigmoid(colors)
             opacities = torch.sigmoid(opacities)
             
@@ -53,7 +55,7 @@ class Parser_GS():
             colors = gs_features[..., 7:10]
             opacities = gs_features[..., 10:11]
             
-            scales = torch.relu(scales)
+            scales = SCALE_MULTIPLIER * torch.sigmoid(scales)
             colors = torch.sigmoid(colors)
             opacities = torch.sigmoid(opacities)
             
@@ -75,7 +77,7 @@ class Parser_GS():
             quats = gs_features[..., 6:10]
             opacities = gs_features[..., 10:11]
             
-            scales = torch.relu(scales)
+            scales = SCALE_MULTIPLIER * torch.sigmoid(scales)
             opacities = torch.sigmoid(opacities)
             
             return {
@@ -95,7 +97,7 @@ class Parser_GS():
             quats = gs_features[..., 3:7]
             opacities = gs_features[..., 7:8]
             
-            scales = torch.relu(scales)
+            scales = SCALE_MULTIPLIER * torch.sigmoid(scales)
             opacities = torch.sigmoid(opacities)
             
             return {

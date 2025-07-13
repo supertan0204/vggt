@@ -693,6 +693,7 @@ class Trainer:
                 )
                     
             # Log schedulers
+            logging.info("start logging")
             if self.steps[phase] % self.logging_conf.log_freq == 0:
                 for i, optim in enumerate(self.optims):
                     for j, param_group in enumerate(optim.optimizer.param_groups):
@@ -860,6 +861,8 @@ class Trainer:
         phase: str,
         loss_meters: dict[str, AverageMeter],
     ): 
+        import logging
+        logging.info(f"batch_shape: {batch['images'].shape}")
         # Forward run of the model
         y_hat = model(images = batch["images"]) # batch["images"] has shape B,S,3,H,W
         # Compute the loss
@@ -910,13 +913,13 @@ class Trainer:
     ) -> None:
         keys_to_log = self._get_scalar_log_keys(phase)
         batch_size = batch['extrinsics'].shape[0]
+        import pdb;pdb.set_trace()
         for key in keys_to_log:
             if key in batch:
                 value = batch[key].item() if torch.is_tensor(batch[key]) else batch[key]
                 loss_meters[f"Loss/{phase}_{key}"].update(value, batch_size)
                 if step % self.logging_conf.log_freq == 0:
                     self.tb_writer.log(f"Values/{phase}/{key}", value, step)
-
 
 
 
@@ -1010,7 +1013,7 @@ def get_chunk_from_data(data, chunk_id, num_chunks):
         #         # start = remainder * (chunk_size + 1) + (chunk_id - remainder) * chunk_size
         #         start = remainder + chunk_id * chunk_size
         #         end = start + chunk_size - 1
-        return data[start:end]
+        # return data[start:end]
         
     elif isinstance(data, Mapping):
         return {
