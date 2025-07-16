@@ -877,11 +877,11 @@ class Trainer:
         import numpy as np
         for b in range(B):
             for s in range(S):
-                # write original image
-                tensor_original = batch["images"][b,s] * 255.
-                tensor_np_original = (tensor_original.permute(1,2,0).detach().cpu().numpy()).astype(np.uint8)
-                image_original = Image.fromarray(tensor_np_original)
-                image_original.save(f"/home/ubuntu/nvme/xiyang/vggt/saving/original_{b}_{s}.png")
+            #     # write original image
+            #     tensor_original = batch["images"][b,s] * 255.
+            #     tensor_np_original = (tensor_original.permute(1,2,0).detach().cpu().numpy()).astype(np.uint8)
+            #     image_original = Image.fromarray(tensor_np_original)
+            #     image_original.save(f"/home/ubuntu/nvme/xiyang/vggt/saving/original_{b}_{s}.png")
                 
                 # write predicted image
                 tensor_predicted = y_hat["renders"][b,s].permute(1,2,0).detach().cpu()
@@ -890,9 +890,9 @@ class Trainer:
                 image_predicted = Image.fromarray(tensor_np_predicted)
                 image_predicted.save(f"/home/ubuntu/nvme/xiyang/vggt/saving/predicted_{b}_{s}.png")
                 
-                del tensor_np_original
+                # del tensor_np_original
                 del tensor_np_predicted
-        
+        import pdb; pdb.set_trace()
 
         self._update_and_log_scalars(y_hat_batch, phase, self.steps[phase], loss_meters)
 

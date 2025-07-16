@@ -1,5 +1,6 @@
 import torch
-SCALE_MULTIPLIER = 10.0
+max_scale = 1
+scale_factor = 1e-3
 
 class Parser_GS():
     def __init__(self, mode):
@@ -23,6 +24,7 @@ class Parser_GS():
         colors = None
         opacities = None
         
+        spls = torch.nn.Softplus()
         if self.mode == "predict_color_and_xyz":
             if gs_features.shape[-1] != 14:
                 raise ValueError(f"The last dimension of gs_features is expected to be 14 in {self.mode} mode, got {gs_features.shape[-1]}")
@@ -33,7 +35,8 @@ class Parser_GS():
             opacities = gs_features[..., 13:14]
             
 
-            scales = torch.sigmoid(scales)
+            scales = spls(scales) * scale_factor
+            scales = torch.clamp(scales, max=max_scale)
             colors = torch.sigmoid(colors)
             opacities = torch.sigmoid(opacities)
             
@@ -55,7 +58,9 @@ class Parser_GS():
             colors = gs_features[..., 7:10]
             opacities = gs_features[..., 10:11]
             
-            scales = SCALE_MULTIPLIER * torch.sigmoid(scales)
+            
+            scales = spls(scales) * scale_factor
+            scales = torch.clamp(scales, max=max_scale)
             colors = torch.sigmoid(colors)
             opacities = torch.sigmoid(opacities)
             
@@ -77,7 +82,8 @@ class Parser_GS():
             quats = gs_features[..., 6:10]
             opacities = gs_features[..., 10:11]
             
-            scales = SCALE_MULTIPLIER * torch.sigmoid(scales)
+            scales = spls(scales) * scale_factor
+            scales = torch.clamp(scales, max=max_scale)
             opacities = torch.sigmoid(opacities)
             
             return {
@@ -97,7 +103,8 @@ class Parser_GS():
             quats = gs_features[..., 3:7]
             opacities = gs_features[..., 7:8]
             
-            scales = SCALE_MULTIPLIER * torch.sigmoid(scales)
+            scales = spls(scales) * scale_factor
+            scales = torch.clamp(scales, max=max_scale)
             opacities = torch.sigmoid(opacities)
             
             return {

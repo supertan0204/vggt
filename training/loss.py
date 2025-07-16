@@ -109,7 +109,7 @@ def compute_render_loss(
     for i in range(B):
         total_mse_loss += compute_mse_loss_for_one_scene(pred_render[i], gt_render[i])
         total_perceptual_loss += compute_perceptual_loss_for_one_scene(pred_render[i], gt_render[i], perceptual_loss)
-    logging.info(f"total_mse_loss: {total_mse_loss/float(B)}")
+    # logging.info(f"total_mse_loss: {total_mse_loss/float(B)}")
     logging.info(f"total_perceptual_loss: {total_perceptual_loss/float(B)}")
     total_render_loss = w_mse * total_mse_loss + w_perceptual * total_perceptual_loss
     total_render_loss = total_render_loss / float(B)

@@ -10,6 +10,7 @@ from vggt.heads.dpt_head import DPTHead
 from vggt.heads.track_head import TrackHead
 from vggt.utils.pose_enc import pose_encoding_to_extri_intri
 from training.gs_feature_parser import Parser_GS
+from vggt.utils.geometry import closed_form_inverse_se3
 import math
 
 
@@ -102,13 +103,6 @@ class VGGT_GS(VGGT):
                     aggregated_tokens_list, images=images, patch_start_idx=patch_start_idx
                 )
                 predictions["world_points"] = pts3d
-                # import pdb;pdb.set_trace()
-                # import open3d as o3d
-                # points = pts3d[0,1].view(-1,3).detach().cpu().numpy()
-                # pcd = o3d.geometry.PointCloud()
-                # pcd.points = o3d.utility.Vector3dVector(points)
-                # o3d.io.write_point_cloud("points.ply", pcd)
-                
                 predictions["world_points_conf"] = pts3d_conf
             if self.gs_head is not None:
                 if self.gs_head.feature_only == True:
@@ -134,6 +128,8 @@ class VGGT_GS(VGGT):
         Args:
             cfg (dict): Configuration dictionary
         """
+        
+        
         # import pdb;pdb.set_trace()
         gs_feature_dict = self.gs_feature_parser.parse_feature(predictions["gs_features"])
         
@@ -144,6 +140,8 @@ class VGGT_GS(VGGT):
         opacities = gs_feature_dict["opacities"]
         image_size = gs_feature_dict["image_size"]
         
+        H = image_size[0]
+        W = image_size[1]
         
         
         gs_confs = predictions["gs_conf"]
@@ -151,16 +149,33 @@ class VGGT_GS(VGGT):
 
         # Camera parameters
         pose_enc = predictions["pose_enc"]
-        extrinsics, intrinsics = pose_encoding_to_extri_intri(pose_enc, image_size_hw=image_size) # extrinsics: BxSx3x4, intrinsics: BxSx3x3
-
+        extrinsics, intrinsics = pose_encoding_to_extri_intri(pose_enc, image_size_hw=images.shape[-2:]) # extrinsics: BxSx3x4, intrinsics: BxSx3x3
         B, S, _, _ = extrinsics.shape
-        extra_row = torch.tensor([0, 0, 0, 1], dtype=extrinsics.dtype, device=extrinsics.device).view(1, 1, 1, 4)
-        viewmats = torch.cat((extrinsics, extra_row.expand(B, S, 1, 4)), dim=2) # B,S,4,4       
-        outputs = []
-        # TODO: Remove this part, this is just test
-        world_points = predictions["world_points"]
+        
+        
+        import numpy as np
+        from PIL import Image
+        for b in range(B):
+            for s in range(S):
+                # write original image
+                tensor_original = images[b,s] * 255.
+                tensor_np_original = (tensor_original.permute(1,2,0).detach().cpu().numpy()).astype(np.uint8)
+                image_original = Image.fromarray(tensor_np_original)
+                image_original.save(f"/home/ubuntu/nvme/xiyang/vggt/saving/original_{b}_{s}.png")
 
-        # focal = 0.5*float(W) / math.tan(math.pi/4.)
+        
+        
+        viewmats = torch.zeros((B, S, 4, 4), device="cuda")
+        viewmats[:, :, :3, :4] = extrinsics
+        viewmats[:, :, 3, 3] = 1
+        # viewmats = closed_form_inverse_se3(extrinsics[0]).unsqueeze(0)
+        
+        outputs = []
+        world_points = predictions["world_points"]
+        # import pdb;pdb.set_trace()
+        
+        
+        # focal = float(W) / math.tan(math.pi/4.)
         # K = torch.tensor(
         #     [
         #         [focal, 0, W / 2],
@@ -169,20 +184,40 @@ class VGGT_GS(VGGT):
         #     ],
         #     device="cuda",
         # )
-        # print(f"K: {K}")
         # for b in range(B):
         #     for s in range(S):
         #         print(intrinsics[b,s])
-        #         import pdb;pdb.set_trace()
         # Render GS for multiple input views
         
         # assign global points by concating all pointmaps
-        global_points = world_points.view(B,-1,3) if means is None else means.view(B,-1,3)
-        global_quats = quats.view(B,-1,4)
-        global_scales = scales.view(B,-1,3)
-        global_colors = colors.view(B,-1,3) if colors is not None else images.view(B,-1,3)
-        global_opacities = opacities.view(B,-1,1)
+        global_points = world_points.reshape(B,-1,3) if means is None else means.reshape(B,-1,3)
+        global_quats = quats.reshape(B,-1,4)
+        global_scales = scales.reshape(B,-1,3)
+        global_colors = colors.reshape(B,-1,3) if colors is not None else images.permute(0,1,3,4,2).reshape(B,-1,3)
+        global_opacities = opacities.reshape(B,-1,1)
         
+        save_ply(
+                    global_points[0], 
+                    global_colors[0], 
+                    "debug.ply"
+                )
+        
+        # x = global_points[0, :, 0]
+        # y = global_points[0, :, 1]
+        
+        # x_min, x_max = x.min(), x.max()
+        # y_min, y_max = y.min(), y.max()
+        
+        # length = x_max - x_min
+        # width = y_max - y_min
+        
+        # import pdb;pdb.set_trace()
+        
+        
+        # TODO This is just test, remove this in the future:
+        test_scales = torch.ones_like(global_scales) * 1e-3
+        test_opacities = torch.ones_like(global_opacities)
+        test_colors = torch.ones_like(global_colors)
         
         for b in range(B):
             renders = []
@@ -191,38 +226,70 @@ class VGGT_GS(VGGT):
             for s in range(S):
                 # print(f"...........{world_points.shape}..........")
                 r, a, m = rasterization(
-                # means=means[b,s],
-                # means=world_points[b,s].view(H*W, 3),
-                # quats=quats[b,s],
+                # means = world_points[b,s].reshape(H*W,3),
+                # quats=quats[b,s].reshape(H*W,4),
+                # scales = torch.ones(H*W,3,device="cuda")*1e-3,
+                # colors=images[b,s].permute(1,2,0).reshape(H*W,3),
+                # opacities=torch.ones(H*W,device="cuda"),
+                # scales = test_scales[b],
                 # scales=scales[b,s],
-                # colors=colors[b,s],
                 means = global_points[b],
                 quats=global_quats[b],
                 scales=global_scales[b],
-                # colors=global_colors[b],
                 colors=global_colors[b],
+                # colors = test_colors[b],
                 opacities=global_opacities[b].squeeze(),
+                # opacities = test_opacities[b].squeeze(),
                 viewmats=viewmats[b,s][None],
                 Ks=intrinsics[b,s][None],
                 # Ks = K[None],
                 # opacities=opacities[b,s].squeeze(),
-                width=image_size[1],
                 height=image_size[0],
+                width=image_size[1],
+                packed=False,
                 # backgrounds=torch.tensor([0.0,0.0,0.0],device="cuda",dtype=torch.float32)
                 )
+                # visualize render for one scene
+                # import pdb;pdb.set_trace()
+                # img_tensor = r.squeeze().detach().cpu() * 255.
+                # img_np = img_tensor.numpy().astype(np.uint8)
+                # img_rendered = Image.fromarray(img_np)
+                # img_rendered.save(f"./saving/scene_{s}.png")
+                
+                # save_ply(world_points[b,s].reshape(H*W,3), 
+                #          images[b,s].permute(1,2,0).reshape(H*W,3),
+                #          f'scene_{s}.ply')
+                
                 renders.append(r.squeeze())
-                alphas.append(a.squeeze())
-                meta.append(m)
+                del a
+                del m
+                # alphas.append(a.squeeze())
+                # meta.append(m)
             renders = torch.stack(renders, dim=0)
-            alphas = torch.stack(alphas, dim=0)
+            # alphas = torch.stack(alphas, dim=0)
             
             batch_output = {}
             
             batch_output["renders"] = renders
-            batch_output["alphas"] = alphas
-            batch_output["meta"] = meta
+            # batch_output["alphas"] = alphas
+            # batch_output["meta"] = meta
             batch_output["gs_conf"] = gs_confs[b]
             # outputs.append(batch_output)
             outputs.append(renders.permute(0,3,1,2).contiguous())
 
         return torch.stack(outputs, dim=0)
+def save_ply(points, colors, filename):
+    import open3d as o3d   
+    import numpy as np             
+    if torch.is_tensor(points):
+        points_visual = points.reshape(-1, 3).detach().cpu().numpy()
+    else:
+        points_visual = points.reshape(-1, 3)
+    if torch.is_tensor(colors):
+        points_visual_rgb = colors.reshape(-1, 3).detach().cpu().numpy()
+    else:
+        points_visual_rgb = colors.reshape(-1, 3)
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(points_visual.astype(np.float64))
+    pcd.colors = o3d.utility.Vector3dVector(points_visual_rgb.astype(np.float64))
+    o3d.io.write_point_cloud(filename, pcd, write_ascii=True)

@@ -2,8 +2,8 @@ defaults:
   - default_dataset.yaml
 
 exp_name: exp001
-img_size: 224
-num_workers: 0
+img_size: 518
+num_workers: 8
 seed_value: 42
 accum_steps: 4
 patch_size: 14
@@ -16,14 +16,15 @@ data:
   train:
     _target_: training.data.dynamic_dataloader.DynamicTorchDataset
     num_workers: ${num_workers}
+    shuffle: True
+    pin_memory: False
     common_config:
       img_size: ${img_size}
       patch_size: ${patch_size}
       debug: True
-      repeat_batch: True
       max_img_per_gpu: 24
       image_nums: [2, 12]
-      landscape_check: False
+      repeat_batch: True
 
       augs:
         cojitter: True
@@ -99,7 +100,7 @@ logging:
 
 checkpoint:
   save_dir: logs/${exp_name}/ckpts
-  save_freq: 5
+  save_freq: 10
   resume_checkpoint_path: /home/ubuntu/nvme/xiyang/vggt/ckpts/model.pt
   strict: False
 
@@ -125,7 +126,7 @@ loss:
   track:
     enable: False  
   rendering: 
-    w_mse: 1.0 # the weight of mse loss
+    w_mse: 10.0 # the weight of mse loss
     w_perceptual: 1.0 # the weight of perceptual loss
     enable: True
 
@@ -141,11 +142,11 @@ optim:
     weight_decay: 0.05
 
   frozen_module_names:
-      # - "*aggregator*"  # example, freeze the aggregator
+      - "*aggregator*"  # example, freeze the aggregator
       - "*point_head*"
       - "*camera_head*"
       - "*depth_head*"
-      # - "*track_head*"
+      - "*track_head*"
 
   amp:
     enabled: True
@@ -153,9 +154,9 @@ optim:
   gradient_clip:
     _target_: training.train_utils.gradient_clip.GradientClipper
     configs:
-      - module_name: ["aggregator"]
-        max_norm: 1.0   # feel free to reduce this if you see instabilities
-        norm_type: 2
+      # - module_name: ["aggregator"]
+      #   max_norm: 1.0   # feel free to reduce this if you see instabilities
+      #   norm_type: 2
       # - module_name: ["depth"]
       #   max_norm: 1.0   # feel free to reduce this if you see instabilities
       #   norm_type: 2
@@ -196,7 +197,7 @@ model:
   enable_camera: True
   enable_depth: True
   enable_point: True
-  enable_track: False
+  enable_track: True
   
 
 distributed:
