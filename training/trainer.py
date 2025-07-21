@@ -60,6 +60,7 @@ from training.train_utils.normalization import normalize_camera_extrinsics_and_p
 from training.train_utils.checkpoint import DDPCheckpointSaver
 
 
+
 class Trainer:
     """
     Trainer supporting the DDP training strategies.
@@ -221,7 +222,7 @@ class Trainer:
             
         logging.info(f"Loading the optimizer state dict (rank {self.rank})")
         if "optimizer" in checkpoint:
-            self.optims.optimizer.load_state_dict(checkpoint["optimizer"])
+            self.optims[0].optimizer.load_state_dict(checkpoint["optimizer"])
 
         if "epoch" in checkpoint:
             self.epoch = checkpoint["epoch"]
@@ -786,7 +787,7 @@ class Trainer:
                     loss_dict = self._step(
                         chunked_batch, self.model, phase, loss_meters
                     )
-
+                
 
                 loss = loss_dict["objective"]
                 loss_key = f"Loss/{phase}_objective"
@@ -800,6 +801,7 @@ class Trainer:
                 loss /= accum_steps
                 self.scaler.scale(loss).backward()
                 loss_meters[loss_key].update(loss.item(), batch_size)
+            
 
 
 
@@ -862,7 +864,7 @@ class Trainer:
         loss_meters: dict[str, AverageMeter],
     ): 
         import logging
-        logging.info(f"batch_shape: {batch['images'].shape}")
+        # logging.info(f"batch_shape: {batch['images'].shape}")
         # Forward run of the model
         y_hat = model(images = batch["images"]) # batch["images"] has shape B,S,3,H,W
         # Compute the loss
@@ -877,22 +879,22 @@ class Trainer:
         import numpy as np
         for b in range(B):
             for s in range(S):
-            #     # write original image
-            #     tensor_original = batch["images"][b,s] * 255.
-            #     tensor_np_original = (tensor_original.permute(1,2,0).detach().cpu().numpy()).astype(np.uint8)
-            #     image_original = Image.fromarray(tensor_np_original)
-            #     image_original.save(f"/home/ubuntu/nvme/xiyang/vggt/saving/original_{b}_{s}.png")
+                # write original image
+                tensor_original = batch["images"][b,s] * 255.
+                tensor_np_original = (tensor_original.permute(1,2,0).detach().cpu().numpy()).astype(np.uint8)
+                image_original = Image.fromarray(tensor_np_original)
+                image_original.save(f"./saving/original_{b}_{s}.png")
                 
                 # write predicted image
                 tensor_predicted = y_hat["renders"][b,s].permute(1,2,0).detach().cpu()
                 tensor_predicted = tensor_predicted * 255.
                 tensor_np_predicted = tensor_predicted.numpy().astype(np.uint8)
                 image_predicted = Image.fromarray(tensor_np_predicted)
-                image_predicted.save(f"/home/ubuntu/nvme/xiyang/vggt/saving/predicted_{b}_{s}.png")
+                image_predicted.save(f"./saving/predicted_{b}_{s}.png")
                 
                 # del tensor_np_original
                 del tensor_np_predicted
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
 
         self._update_and_log_scalars(y_hat_batch, phase, self.steps[phase], loss_meters)
 

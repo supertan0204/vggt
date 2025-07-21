@@ -108,7 +108,7 @@ class PerceptualLoss(nn.Module):
         e4 = self._compute_error(target_features[3], pred_features[3]) / 5.6
         e5 = self._compute_error(target_features[4], pred_features[4]) * 10 / 1.5
         
-        print(f"e0: {e0}, e1: {e1}, e2: {e2}, e3: {e3}, e4: {e4}, e5: {e5}")
+        # print(f"e0: {e0}, e1: {e1}, e2: {e2}, e3: {e3}, e4: {e4}, e5: {e5}")
         
         # Combine all errors and normalize
         total_loss = (e0 + e1 + e2 + e3 + e4 + e5) / 255.0

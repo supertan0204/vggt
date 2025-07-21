@@ -5,7 +5,7 @@ exp_name: exp001
 img_size: 518
 num_workers: 8
 seed_value: 42
-accum_steps: 4
+accum_steps: 2
 patch_size: 14
 
 limit_train_batches: 800
@@ -22,8 +22,8 @@ data:
       img_size: ${img_size}
       patch_size: ${patch_size}
       debug: True
-      max_img_per_gpu: 24
-      image_nums: [2, 12]
+      max_img_per_gpu: 36
+      image_nums: [2, 24]
       repeat_batch: True
 
       augs:
@@ -44,8 +44,8 @@ data:
       dataset_configs:
         - _target_: training.data.datasets.co3d.Co3dDataset
           split: train
-          CO3D_DIR: /home/ubuntu/nvme/Training/co3d
-          CO3D_ANNOTATION_DIR: /home/ubuntu/nvme/Training/co3d_anno
+          CO3D_DIR: /opt/dlami/nvme/xiyang/datasets/co3d
+          CO3D_ANNOTATION_DIR: /opt/dlami/nvme/xiyang/datasets/co3d_anno
   val:
     _target_: training.data.dynamic_dataloader.DynamicTorchDataset
     num_workers: ${num_workers}
@@ -60,14 +60,14 @@ data:
           split: test
           # CO3D_DIR: /checkpoint/repligen/shared/datasets/co3d/
           # CO3D_ANNOTATION_DIR: /checkpoint/repligen/jianyuan/datasets/co3d_anno
-          CO3D_DIR: /home/ubuntu/nvme/Training/co3d
-          CO3D_ANNOTATION_DIR: /home/ubuntu/nvme/Training/co3d_anno
+          CO3D_DIR: /opt/dlami/nvme/xiyang/datasets/co3d
+          CO3D_ANNOTATION_DIR: /opt/dlami/nvme/xiyang/datasets/co3d_anno
 
 
 logging:
   log_dir: logs
   log_visuals: False
-  log_freq: 1
+  log_freq: 5
   log_level_primary: DEBUG
   log_level_secondary: WARNING
   all_ranks: False
@@ -100,8 +100,9 @@ logging:
 
 checkpoint:
   save_dir: logs/${exp_name}/ckpts
-  save_freq: 10
-  resume_checkpoint_path: /home/ubuntu/nvme/xiyang/vggt/ckpts/model.pt
+  save_freq: 5
+  # resume_checkpoint_path: /opt/dlami/nvme/xiyang/programs/vggt/ckpts/model.pt
+  resume_checkpoint_path: /opt/dlami/nvme/xiyang/programs/vggt/logs/exp001/ckpts/checkpoint.pt
   strict: False
 
 
@@ -193,7 +194,7 @@ model:
   _target_: vggt.models.vggt_gs.VGGT_GS
   predict_enable:
    xyz: False
-   color: False
+   color: True
   enable_camera: True
   enable_depth: True
   enable_point: True

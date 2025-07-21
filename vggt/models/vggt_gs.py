@@ -150,21 +150,7 @@ class VGGT_GS(VGGT):
         # Camera parameters
         pose_enc = predictions["pose_enc"]
         extrinsics, intrinsics = pose_encoding_to_extri_intri(pose_enc, image_size_hw=images.shape[-2:]) # extrinsics: BxSx3x4, intrinsics: BxSx3x3
-        B, S, _, _ = extrinsics.shape
-        
-        
-        import numpy as np
-        from PIL import Image
-        for b in range(B):
-            for s in range(S):
-                # write original image
-                tensor_original = images[b,s] * 255.
-                tensor_np_original = (tensor_original.permute(1,2,0).detach().cpu().numpy()).astype(np.uint8)
-                image_original = Image.fromarray(tensor_np_original)
-                image_original.save(f"/home/ubuntu/nvme/xiyang/vggt/saving/original_{b}_{s}.png")
-
-        
-        
+        B, S, _, _ = extrinsics.shape    
         viewmats = torch.zeros((B, S, 4, 4), device="cuda")
         viewmats[:, :, :3, :4] = extrinsics
         viewmats[:, :, 3, 3] = 1
@@ -201,24 +187,6 @@ class VGGT_GS(VGGT):
                     global_colors[0], 
                     "debug.ply"
                 )
-        
-        # x = global_points[0, :, 0]
-        # y = global_points[0, :, 1]
-        
-        # x_min, x_max = x.min(), x.max()
-        # y_min, y_max = y.min(), y.max()
-        
-        # length = x_max - x_min
-        # width = y_max - y_min
-        
-        # import pdb;pdb.set_trace()
-        
-        
-        # TODO This is just test, remove this in the future:
-        test_scales = torch.ones_like(global_scales) * 1e-3
-        test_opacities = torch.ones_like(global_opacities)
-        test_colors = torch.ones_like(global_colors)
-        
         for b in range(B):
             renders = []
             alphas = []

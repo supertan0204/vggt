@@ -107,7 +107,6 @@ def pose_encoding_to_extri_intri(
 
         R = quat_to_mat(quat)
         extrinsics = torch.cat([R, T[..., None]], dim=-1)
-        import pdb;pdb.set_trace()
         if build_intrinsics:
             H, W = image_size_hw
             fy = (H / 2.0) / torch.tan(fov_h / 2.0)

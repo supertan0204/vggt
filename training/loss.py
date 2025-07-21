@@ -110,7 +110,7 @@ def compute_render_loss(
         total_mse_loss += compute_mse_loss_for_one_scene(pred_render[i], gt_render[i])
         total_perceptual_loss += compute_perceptual_loss_for_one_scene(pred_render[i], gt_render[i], perceptual_loss)
     # logging.info(f"total_mse_loss: {total_mse_loss/float(B)}")
-    logging.info(f"total_perceptual_loss: {total_perceptual_loss/float(B)}")
+    # logging.info(f"total_perceptual_loss: {total_perceptual_loss/float(B)}")
     total_render_loss = w_mse * total_mse_loss + w_perceptual * total_perceptual_loss
     total_render_loss = total_render_loss / float(B)
     loss_dict = {
@@ -127,7 +127,7 @@ def compute_perceptual_loss_for_one_scene(predicted_scene_tensor, gt_scene_tenso
         if predicted_scene_tensor.shape != gt_scene_tensor.shape:
             raise ValueError(f"Shape mismatch: predicted tensor shape {predicted_scene_tensor.shape} does not match ground truth shape {gt_scene_tensor.shape}")
         result = perceptual_loss(predicted_scene_tensor, gt_scene_tensor)
-        logging.info(f"perceptual loss for one scene: {result}")
+        # logging.info(f"perceptual loss for one scene: {result}")
         return result
 
 def compute_mse_loss_for_one_scene(predicted_scene_tensor, gt_scene_tensor):
