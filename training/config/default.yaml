@@ -22,7 +22,6 @@ data:
       img_size: ${img_size}
       patch_size: ${patch_size}
       debug: False # need to be False for actual training
-      max_img_per_gpu: 36
       image_nums: [2, 12]
       repeat_batch: True
 
