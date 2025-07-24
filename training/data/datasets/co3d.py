@@ -142,7 +142,6 @@ class Co3dDataset(BaseDataset):
                 except FileNotFoundError:
                     logging.error(f"Annotation file not found: {annotation_file}")
                     continue
-
                 for seq_name, seq_data in annotation.items():
                     if len(seq_data) < min_num_images:
                         continue
@@ -194,7 +193,6 @@ class Co3dDataset(BaseDataset):
             )
 
         annos = [metadata[i] for i in ids]
-
         target_image_shape = self.get_target_shape(aspect_ratio)
 
         images = []

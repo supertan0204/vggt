@@ -165,3 +165,5 @@ logs/*
 metric_checkpoint/*
 
 debug.ply
+
+run_test.py

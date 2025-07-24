@@ -5,11 +5,11 @@ exp_name: exp001
 img_size: 518
 num_workers: 8
 seed_value: 42
-accum_steps: 2
+accum_steps: 4
 patch_size: 14
 
-limit_train_batches: 800
-limit_val_batches: 400
+limit_train_batches: 400
+limit_val_batches: 200
 
 data:
   # The code for data still looks too complicated. I should refactor this again (do I have time?...)
@@ -21,9 +21,9 @@ data:
     common_config:
       img_size: ${img_size}
       patch_size: ${patch_size}
-      debug: True
+      debug: False # need to be False for actual training
       max_img_per_gpu: 36
-      image_nums: [2, 24]
+      image_nums: [2, 12]
       repeat_batch: True
 
       augs:
@@ -46,6 +46,8 @@ data:
           split: train
           CO3D_DIR: /opt/dlami/nvme/xiyang/datasets/co3d
           CO3D_ANNOTATION_DIR: /opt/dlami/nvme/xiyang/datasets/co3d_anno
+        - _target_: training.data.datasets.dl3dv.DL3DVDataset
+          DL3DV_ROOT: /opt/dlami/nvme/xiyang/datasets/DL3DV/DL3DV-10K
   val:
     _target_: training.data.dynamic_dataloader.DynamicTorchDataset
     num_workers: ${num_workers}
@@ -67,7 +69,7 @@ data:
 logging:
   log_dir: logs
   log_visuals: False
-  log_freq: 5
+  log_freq: 1
   log_level_primary: DEBUG
   log_level_secondary: WARNING
   all_ranks: False
@@ -100,9 +102,9 @@ logging:
 
 checkpoint:
   save_dir: logs/${exp_name}/ckpts
-  save_freq: 5
+  save_freq: 1
   # resume_checkpoint_path: /opt/dlami/nvme/xiyang/programs/vggt/ckpts/model.pt
-  resume_checkpoint_path: /opt/dlami/nvme/xiyang/programs/vggt/logs/exp001/ckpts/checkpoint.pt
+  resume_checkpoint_path: /opt/dlami/nvme/xiyang/programs/vggt/logs/exp001/ckpts/checkpoint_5.pt
   strict: False
 
 
