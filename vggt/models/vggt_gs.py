@@ -182,11 +182,11 @@ class VGGT_GS(VGGT):
         global_colors = colors.reshape(B,-1,3) if colors is not None else images.permute(0,1,3,4,2).reshape(B,-1,3)
         global_opacities = opacities.reshape(B,-1,1)
         
-        save_ply(
-                    global_points[0], 
-                    global_colors[0], 
-                    "debug.ply"
-                )
+        # save_ply(
+        #             global_points[0], 
+        #             global_colors[0], 
+        #             "debug.ply"
+        #         )
         for b in range(B):
             renders = []
             alphas = []
