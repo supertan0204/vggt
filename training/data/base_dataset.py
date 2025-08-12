@@ -154,12 +154,12 @@ class BaseDataset(Dataset):
         """
         # Make copies to avoid in-place operations affecting original data
         image = np.copy(image)
-        depth_map = np.copy(depth_map)
+        if depth_map is not None:
+            depth_map = np.copy(depth_map)
         extri_opencv = np.copy(extri_opencv)
         intri_opencv = np.copy(intri_opencv)
         if track is not None:
             track = np.copy(track)
-
         # Apply random scale augmentation during training if enabled
         if self.training and self.aug_scale:
             random_h_scale, random_w_scale = np.random.uniform(
@@ -170,15 +170,18 @@ class BaseDataset(Dataset):
             random_w_scale = min(random_w_scale, 1.0)
             aug_size = original_size * np.array([random_h_scale, random_w_scale])
             aug_size = aug_size.astype(np.int32)
+            original_size_copy = np.copy(original_size)
         else:
             aug_size = original_size
-
+        size_0 = np.array(image.shape[:2])
         # Move principal point to the image center and crop if necessary
         image, depth_map, intri_opencv, track = crop_image_depth_and_intrinsic_by_pp(
             image, depth_map, intri_opencv, aug_size, track=track, filepath=filepath,
         )
 
         original_size = np.array(image.shape[:2])  # update original_size
+        if original_size[0] == 0 or original_size[1] == 0:
+            raise ValueError(f"Invalid original size: {original_size}. Filepath: {filepath}, aug_size: {aug_size}, size_0: {size_0}, original_size_copy: {original_size_copy}")
         target_shape = target_image_shape
 
         # Handle landscape vs. portrait orientation

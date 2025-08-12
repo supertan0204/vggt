@@ -694,7 +694,6 @@ class Trainer:
                 )
                     
             # Log schedulers
-            logging.info("start logging")
             if self.steps[phase] % self.logging_conf.log_freq == 0:
                 for i, optim in enumerate(self.optims):
                     for j, param_group in enumerate(optim.optimizer.param_groups):
@@ -863,7 +862,6 @@ class Trainer:
         phase: str,
         loss_meters: dict[str, AverageMeter],
     ): 
-        import logging
         # logging.info(f"batch_shape: {batch['images'].shape}")
         # Forward run of the model
         y_hat = model(images = batch["images"]) # batch["images"] has shape B,S,3,H,W
@@ -874,30 +872,28 @@ class Trainer:
         y_hat_batch = {**y_hat, **loss_dict, **batch}
         
         # write images for visualization
-        B = batch["images"].shape[0]
-        S = batch["images"].shape[1]
-        import numpy as np
-        for b in range(B):
-            for s in range(S):
-                # write original image
-                tensor_original = batch["images"][b,s] * 255.
-                tensor_np_original = (tensor_original.permute(1,2,0).detach().cpu().numpy()).astype(np.uint8)
-                image_original = Image.fromarray(tensor_np_original)
-                image_original.save(f"./saving/original_{b}_{s}.png")
+        # B = batch["images"].shape[0]
+        # S = batch["images"].shape[1]
+        # import numpy as np
+        # for b in range(B):
+        #     for s in range(S):
+        #         # write original image
+        #         tensor_original = batch["images"][b,s] * 255.
+        #         tensor_np_original = (tensor_original.permute(1,2,0).detach().cpu().numpy()).astype(np.uint8)
+        #         image_original = Image.fromarray(tensor_np_original)
+        #         image_original.save(f"./saving/original_{b}_{s}.png")
                 
-                # write predicted image
-                tensor_predicted = y_hat["renders"][b,s].permute(1,2,0).detach().cpu()
-                tensor_predicted = tensor_predicted * 255.
-                tensor_np_predicted = tensor_predicted.numpy().astype(np.uint8)
-                image_predicted = Image.fromarray(tensor_np_predicted)
-                image_predicted.save(f"./saving/predicted_{b}_{s}.png")
+        #         # write predicted image
+        #         tensor_predicted = y_hat["renders"][b,s].permute(1,2,0).detach().cpu()
+        #         tensor_predicted = tensor_predicted * 255.
+        #         tensor_np_predicted = tensor_predicted.numpy().astype(np.uint8)
+        #         image_predicted = Image.fromarray(tensor_np_predicted)
+        #         image_predicted.save(f"./saving/predicted_{b}_{s}.png")
                 
-                # del tensor_np_original
-                del tensor_np_predicted
-        # import pdb; pdb.set_trace()
+        #         # del tensor_np_original
+        #         del tensor_np_predicted
 
         self._update_and_log_scalars(y_hat_batch, phase, self.steps[phase], loss_meters)
-
         self._log_tb_visuals(y_hat_batch, phase, self.steps[phase])
 
         self.steps[phase] += 1

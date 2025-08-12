@@ -19,15 +19,17 @@ from gsplat.rendering import rasterization
 
 
 class VGGT_GS(VGGT):
-    def __init__(self, predict_enable,
+    def __init__(self,
                 #  img_size=518, 
-                #  patch_size=14, 
-                 embed_dim=1024,
-                 enable_camera=True,
-                 enable_depth=True,
-                 enable_point=True,
-                 enable_track=True,
-                 ):  # Ensure embed_dim is passed
+                #  patch_size=14,
+                sh_degree=1, 
+                embed_dim=1024,
+                enable_camera=True,
+                enable_depth=True,
+                enable_point=True,
+                enable_track=True,
+                debug=False
+                ):  # Ensure embed_dim is passed
         """
         Inherit from VGGT and add GS head.
 
@@ -44,36 +46,14 @@ class VGGT_GS(VGGT):
                          enable_point=enable_point,
                          enable_track=enable_track,
                          )  # Pass embed_dim to the parent class
-        mode = ""
-        if predict_enable.xyz and predict_enable.color:
-            # gs head need to predict color and means 
-            self.gs_head = DPTHead(
-                dim_in=2*embed_dim, 
-                output_dim=15, # xyz:3, scale:3, rotation:4, rgb:3, opacity:1, conf:1
-                activation="inv_log", 
-                conf_activation="expp1"
-            )
-            mode = "predict_color_and_xyz"
-        elif not predict_enable.xyz and not predict_enable.color:
-            self.gs_head = DPTHead(
-                dim_in=2*embed_dim,
-                output_dim=9, # scale:3, rotation:4, opacity:1, conf:1
-                activation="inv_log",
-                conf_activation="expp1",
-            )
-            mode = "predict_none"
-        else:
-            self.gs_head = DPTHead(
-                dim_in=2*embed_dim, 
-                output_dim=12, # scale:3, rotation:4, rgb/xyz:3, opacity:1, conf:1
-                activation="inv_log", 
-                conf_activation="expp1", 
-            )
-            if not predict_enable.xyz and predict_enable.color:
-                mode = "predict_color_only"
-            else: 
-                mode = "predict_xyz_only"
-        self.gs_feature_parser = Parser_GS(mode)
+        self.debug = debug
+        self.sh_degree = sh_degree
+        self.gs_head = DPTHead(
+            dim_in=2*embed_dim,
+            output_dim=(sh_degree + 1)**2*3 + 3 + 4 + 1,
+            activation="inv_log",
+            conf_activation="expp1",
+        )
     
     def forward(self, images: torch.Tensor, query_points: torch.Tensor = None):
         """
@@ -129,123 +109,76 @@ class VGGT_GS(VGGT):
             cfg (dict): Configuration dictionary
         """
         
-        
-        # import pdb;pdb.set_trace()
-        gs_feature_dict = self.gs_feature_parser.parse_feature(predictions["gs_features"])
-        
-        means = gs_feature_dict["means"]
-        scales = gs_feature_dict["scales"]
-        quats = gs_feature_dict["quats"]
-        colors = gs_feature_dict["colors"]
-        opacities = gs_feature_dict["opacities"]
-        image_size = gs_feature_dict["image_size"]
-        
-        H = image_size[0]
-        W = image_size[1]
+        # parse gs features
+        gs_features = predictions["gs_features"] # B,S,H,W,-1
+        gs_conf = torch.sigmoid(predictions["gs_conf"]).unsqueeze(-1) # B,S,H,W,1
+        points = predictions["world_points"] # B,S,H,W,3
+        B,S,H,W,_ = gs_features.shape
+        original_colors = images.permute(0,1,3,4,2).reshape(B,-1,3)
+        # soft filter gs features
+        conf_threshold = torch.mean(gs_conf, dim=[2,3]).view(B,S,1,1,1) # B,S,1,1,1
+        sharp_factor = 10.0
+        soft_mask = torch.sigmoid(sharp_factor*(gs_conf - conf_threshold)) * torch.sigmoid(sharp_factor*(gs_conf - 0.1))
+        gs_features = gs_features * soft_mask
         
         
-        gs_confs = predictions["gs_conf"]
-        gs_confs = torch.sigmoid(gs_confs)
-
+        
+        # feature extraction
+        spls = torch.nn.Softplus()
+        scale_factor = 1e-3
+        Kx3 = (self.sh_degree + 1)**2 * 3
+        sh_coeffs = gs_features[..., :Kx3].reshape(B,S,H,W,Kx3//3,3)
+        scales = torch.clamp(spls(gs_features[..., Kx3:Kx3+3])*scale_factor,max=1)
+        quats = gs_features[..., Kx3+3:Kx3+7]
+        opacities = torch.sigmoid(gs_features[..., -1:])
+        
+        # put predictions of each frame together for one scene
+        global_points = points.reshape(B,S*H*W,3)
+        global_quats = quats.reshape(B,S*H*W,4)
+        global_scales = scales.reshape(B,S*H*W,3)
+        global_colors = original_colors if self.debug else sh_coeffs.reshape(B, S*H*W, Kx3//3, 3)
+        global_opacities = opacities.reshape(B,S*H*W,1).squeeze(-1)
         # Camera parameters
         pose_enc = predictions["pose_enc"]
-        extrinsics, intrinsics = pose_encoding_to_extri_intri(pose_enc, image_size_hw=images.shape[-2:]) # extrinsics: BxSx3x4, intrinsics: BxSx3x3
-        B, S, _, _ = extrinsics.shape    
+        extrinsics, intrinsics = pose_encoding_to_extri_intri(pose_enc, image_size_hw=images.shape[-2:]) # extrinsics: BxSx3x4, intrinsics: BxSx3x3   
         viewmats = torch.zeros((B, S, 4, 4), device="cuda")
         viewmats[:, :, :3, :4] = extrinsics
         viewmats[:, :, 3, 3] = 1
-        # viewmats = closed_form_inverse_se3(extrinsics[0]).unsqueeze(0)
         
         outputs = []
-        world_points = predictions["world_points"]
-        # import pdb;pdb.set_trace()
         
-        
-        # focal = float(W) / math.tan(math.pi/4.)
-        # K = torch.tensor(
-        #     [
-        #         [focal, 0, W / 2],
-        #         [0, focal, H / 2],
-        #         [0, 0, 1],
-        #     ],
-        #     device="cuda",
-        # )
-        # for b in range(B):
-        #     for s in range(S):
-        #         print(intrinsics[b,s])
-        # Render GS for multiple input views
-        
-        # assign global points by concating all pointmaps
-        global_points = world_points.reshape(B,-1,3) if means is None else means.reshape(B,-1,3)
-        global_quats = quats.reshape(B,-1,4)
-        global_scales = scales.reshape(B,-1,3)
-        global_colors = colors.reshape(B,-1,3) if colors is not None else images.permute(0,1,3,4,2).reshape(B,-1,3)
-        global_opacities = opacities.reshape(B,-1,1)
-        
-        # save_ply(
-        #             global_points[0], 
-        #             global_colors[0], 
-        #             "debug.ply"
-        #         )
-        for b in range(B):
-            renders = []
-            alphas = []
-            meta = []
-            for s in range(S):
-                # print(f"...........{world_points.shape}..........")
-                r, a, m = rasterization(
-                # means = world_points[b,s].reshape(H*W,3),
-                # quats=quats[b,s].reshape(H*W,4),
-                # scales = torch.ones(H*W,3,device="cuda")*1e-3,
-                # colors=images[b,s].permute(1,2,0).reshape(H*W,3),
-                # opacities=torch.ones(H*W,device="cuda"),
-                # scales = test_scales[b],
-                # scales=scales[b,s],
-                means = global_points[b],
-                quats=global_quats[b],
-                scales=global_scales[b],
-                colors=global_colors[b],
-                # colors = test_colors[b],
-                opacities=global_opacities[b].squeeze(),
-                # opacities = test_opacities[b].squeeze(),
-                viewmats=viewmats[b,s][None],
-                Ks=intrinsics[b,s][None],
-                # Ks = K[None],
-                # opacities=opacities[b,s].squeeze(),
-                height=image_size[0],
-                width=image_size[1],
-                packed=False,
-                # backgrounds=torch.tensor([0.0,0.0,0.0],device="cuda",dtype=torch.float32)
-                )
-                # visualize render for one scene
-                # import pdb;pdb.set_trace()
-                # img_tensor = r.squeeze().detach().cpu() * 255.
-                # img_np = img_tensor.numpy().astype(np.uint8)
-                # img_rendered = Image.fromarray(img_np)
-                # img_rendered.save(f"./saving/scene_{s}.png")
-                
-                # save_ply(world_points[b,s].reshape(H*W,3), 
-                #          images[b,s].permute(1,2,0).reshape(H*W,3),
-                #          f'scene_{s}.ply')
-                
-                renders.append(r.squeeze())
-                del a
-                del m
-                # alphas.append(a.squeeze())
-                # meta.append(m)
-            renders = torch.stack(renders, dim=0)
-            # alphas = torch.stack(alphas, dim=0)
+        if self.debug:
+            save_ply(
+                global_points[0], 
+                global_colors[0], 
+                "debug.ply"
+            )
+        # batch rasterization
+        renders, alphas, meta = rasterization(
+            means=global_points,
+            quats=global_quats,
+            scales=global_scales,
+            sh_degree=self.sh_degree,
+            colors=global_colors,
+            opacities=global_opacities,
+            viewmats=viewmats,
+            Ks=intrinsics,
+            height=H,
+            width=W,
+            packed=False,
+        )
             
-            batch_output = {}
-            
-            batch_output["renders"] = renders
-            # batch_output["alphas"] = alphas
-            # batch_output["meta"] = meta
-            batch_output["gs_conf"] = gs_confs[b]
-            # outputs.append(batch_output)
-            outputs.append(renders.permute(0,3,1,2).contiguous())
+        batch_output = {}
+        
+        batch_output["renders"] = renders
+        # batch_output["alphas"] = alphas
+        # batch_output["meta"] = meta
+        batch_output["gs_conf"] = gs_conf
+        outputs = renders.permute(0,1,4,2,3).contiguous()
 
-        return torch.stack(outputs, dim=0)
+        return outputs
+    
+
 def save_ply(points, colors, filename):
     import open3d as o3d   
     import numpy as np             

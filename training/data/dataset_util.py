@@ -113,8 +113,10 @@ def crop_image_depth_and_intrinsic_by_pp(
         end_x = start_x + 2 * math.floor(half_x)
         end_y = start_y + 2 * math.floor(half_y)
 
-    # Perform the crop
+    # Perform the crop    
     image = image[start_x:end_x, start_y:end_y, :]
+    if image.shape[0] == 0 or image.shape[1] == 0:
+        raise ValueError(f"Cropped image is empty. Filepath: {filepath}, start_x: {start_x}, end_x: {end_x}, intrinsic: {intrinsic}")
     if depth_map is not None:
         depth_map = depth_map[start_x:end_x, start_y:end_y]
 
@@ -221,7 +223,6 @@ def resize_image_depth_and_intrinsic(
     resize_scales = (target_shape + safe_bound) / original_size
     max_resize_scale = np.max(resize_scales)
     intrinsic = np.copy(intrinsic)
-
     # Convert image to PIL for resizing
     image = Image.fromarray(image)
     input_resolution = np.array(image.size)
@@ -253,8 +254,10 @@ def resize_image_depth_and_intrinsic(
     if pixel_center:
         intrinsic[0, 2] = intrinsic[0, 2] - 0.5
         intrinsic[1, 2] = intrinsic[1, 2] - 0.5
-
-    assert image.shape[:2] == depth_map.shape[:2]
+    if depth_map is not None:
+        assert image.shape[:2] == depth_map.shape[:2], (
+            f"Image shape {image.shape[:2]} does not match depth map shape {depth_map.shape[:2]}"
+        )
     return image, depth_map, intrinsic, track
 
 

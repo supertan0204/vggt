@@ -5,6 +5,7 @@ from typing import List, Optional
 import random
 import json
 import logging
+import torch
 
 DIVIDES = [
     "1K",
@@ -76,8 +77,10 @@ class DL3DVDataset(BaseDataset):
                 
                 self.metadatas[folder_path] = annotations
                 
-            self.hash_path_list = list(self.metadatas.keys())
-            self.hash_list_len = len(self.hash_path_list)
+        self.hash_path_list = list(self.metadatas.keys())
+        self.hash_list_len = len(self.hash_path_list)
+        if self.hash_list_len ==0:
+            raise ValueError("No valid sequences found in the specified DL3DV_ROOT directory.")
     def get_data(
         self,
         seq_index: int = None,
@@ -102,6 +105,8 @@ class DL3DVDataset(BaseDataset):
         target_image_shape = self.get_target_shape(aspect_ratio)
         
         # extract camera intrinsics for a certain frame
+        w = metadata.get("w", 0)
+        h = metadata.get("h", 0)
         fl_x = metadata.get("fl_x", 0.0)
         fl_y = metadata.get("fl_y", 0.0)
         cx = metadata.get("cx", 0.0)
@@ -117,6 +122,9 @@ class DL3DVDataset(BaseDataset):
         intrinsics = []
         original_sizes = []
         image_paths = []
+        cam_points = []
+        world_points = []
+        point_masks = []
         
         for frame_anno in frame_annos:
             frame_path = frame_anno.get("file_path", "")
@@ -126,22 +134,28 @@ class DL3DVDataset(BaseDataset):
                 if not os.path.exists(actual_frame_path):
                     missing_frames.append(actual_frame_path)
                     continue
-            
             # read image and process it
             image = read_image_cv2(actual_frame_path)
             original_size = np.array(image.shape[:2])
+            
+            scale_ratio = max(w / original_size[1], h / original_size[0])
+            fl_x_current = fl_x / scale_ratio
+            fl_y_current = fl_y / scale_ratio
+            cx_current = cx / scale_ratio
+            cy_current = cy / scale_ratio
+            
             extri_opencv = np.array(frame_anno.get("transform_matrix", []), dtype=np.float32)
             intri_opencv = np.array(
                             [
-                                [fl_x, 0, cx],
-                                [0, fl_y, cy],
+                                [fl_x_current, 0, cx_current],
+                                [0, fl_y_current, cy_current],
                                 [0, 0, 1]
                             ], 
                             dtype=np.float32
-                            )
+                            )   
             (
                 image,
-                depth_map,
+                _,
                 extri_opencv,
                 intri_opencv,
                 world_coords_points,
@@ -160,8 +174,11 @@ class DL3DVDataset(BaseDataset):
             images.append(image)
             extrinsics.append(extri_opencv)
             intrinsics.append(intri_opencv)
+            cam_points.append(cam_coords_points)
             original_sizes.append(original_size)
             image_paths.append(actual_frame_path)
+            world_points.append(world_coords_points)
+            point_masks.append(point_mask)
                 
         set_name = "dl3dv"
         batch = {
@@ -173,6 +190,10 @@ class DL3DVDataset(BaseDataset):
             "extrinsics": extrinsics,
             "intrinsics": intrinsics,
             "original_sizes": original_sizes,
+            "depths": None,  # DL3DV does not provide depth maps,
+            "cam_points": cam_points, 
+            "point_masks": point_masks,
+            "world_points": world_points,  
         }
         
         if len(missing_frames) > 0:

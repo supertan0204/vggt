@@ -1,15 +1,15 @@
 defaults:
   - default_dataset.yaml
 
-exp_name: exp_sh
+exp_name: test
 img_size: 518
-num_workers: 24
+num_workers: 8
 seed_value: 42
-accum_steps: 2
+accum_steps: 4
 patch_size: 14
 
-limit_train_batches: 800
-limit_val_batches: 400
+limit_train_batches: 400
+limit_val_batches: 200
 
 data:
   # The code for data still looks too complicated. I should refactor this again (do I have time?...)
@@ -17,13 +17,12 @@ data:
     _target_: training.data.dynamic_dataloader.DynamicTorchDataset
     num_workers: ${num_workers}
     shuffle: True
-    pin_memory: True
-    max_img_per_gpu: 24
+    pin_memory: False
     common_config:
       img_size: ${img_size}
       patch_size: ${patch_size}
       debug: False # need to be False for actual training
-      image_nums: [2, 24]
+      image_nums: [2, 12]
       repeat_batch: True
 
       augs:
@@ -46,9 +45,9 @@ data:
           split: train
           CO3D_DIR: /opt/dlami/nvme/xiyang/datasets/co3d
           CO3D_ANNOTATION_DIR: /opt/dlami/nvme/xiyang/datasets/co3d_anno
-        # - _target_: training.data.datasets.dl3dv.DL3DVDataset
-        #   DL3DV_ROOT: /opt/dlami/nvme/xiyang/datasets/DL3DV/DL3DV-10K
-        #   divides: ['2K']
+        - _target_: training.data.datasets.dl3dv.DL3DVDataset
+          DL3DV_ROOT: /opt/dlami/nvme/xiyang/datasets/DL3DV/DL3DV-10K
+          divides: ['2K']
   val:
     _target_: training.data.dynamic_dataloader.DynamicTorchDataset
     num_workers: ${num_workers}
@@ -69,18 +68,8 @@ data:
 
 logging:
   log_dir: logs
-  log_visuals: True
-  log_visual_frequency:
-    train: 100
-    val: 50
-  visuals_keys_to_log:
-    train:
-      keys_to_log:
-         - renders
-      modality: image
-  visuals_per_batch_to_log: 8
-  video_logging_fps: 15
-  log_freq: 10
+  log_visuals: False
+  log_freq: 1
   log_level_primary: DEBUG
   log_level_secondary: WARNING
   all_ranks: False
@@ -114,8 +103,8 @@ logging:
 checkpoint:
   save_dir: logs/${exp_name}/ckpts
   save_freq: 1
-  resume_checkpoint_path: /opt/dlami/nvme/xiyang/programs/vggt/ckpts/model.pt
-  # resume_checkpoint_path: /opt/dlami/nvme/xiyang/programs/vggt/logs/exp001/ckpts/checkpoint_3.pt
+  # resume_checkpoint_path: /opt/dlami/nvme/xiyang/programs/vggt/ckpts/model.pt
+  resume_checkpoint_path: /opt/dlami/nvme/xiyang/programs/vggt/logs/exp001/ckpts/checkpoint_3.pt
   strict: False
 
 
@@ -160,7 +149,7 @@ optim:
       - "*point_head*"
       - "*camera_head*"
       - "*depth_head*"
-      # - "*track_head*"
+      - "*track_head*"
 
   amp:
     enabled: True
@@ -205,12 +194,14 @@ max_epochs: 100
 
 model:
   _target_: vggt.models.vggt_gs.VGGT_GS
+  predict_enable:
+   xyz: False
+   color: True
   enable_camera: True
   enable_depth: True
   enable_point: True
-  enable_track: False
-  debug: False
-  sh_degree: 2
+  enable_track: True
+  
 
 distributed:
   # check https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html for options

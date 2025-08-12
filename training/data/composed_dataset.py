@@ -110,7 +110,12 @@ class ComposedDataset(Dataset, ABC):
         images = images.permute(0,3,1,2).to(torch.get_default_dtype()).div(255)
 
         # Convert other data to tensors with appropriate types
-        depths = torch.from_numpy(np.stack(batch["depths"]).astype(np.float32))
+        if batch["depths"] is not None:
+            # Convert depths to float32 tensor
+            depths = torch.from_numpy(np.stack(batch["depths"]).astype(np.float32))
+        else:
+            # If no depths are provided, create a dummy tensor
+            depths = torch.zeros((images.shape[0], 1, images.shape[2], images.shape[3]), dtype=torch.float32)
         extrinsics = torch.from_numpy(np.stack(batch["extrinsics"]).astype(np.float32))
         intrinsics = torch.from_numpy(np.stack(batch["intrinsics"]).astype(np.float32))
         cam_points = torch.from_numpy(np.stack(batch["cam_points"]).astype(np.float32))
