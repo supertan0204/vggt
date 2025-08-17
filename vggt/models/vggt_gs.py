@@ -2,6 +2,7 @@ from vggt.models.vggt import VGGT
 import torch
 import torch.nn as nn
 import open3d as o3d
+import logging
 
 
 from vggt.models.aggregator import Aggregator
@@ -97,7 +98,6 @@ class VGGT_GS(VGGT):
             if self.camera_head is not None:
                 pose_enc_list = self.camera_head(aggregated_tokens_list)
                 predictions["pose_enc"] = pose_enc_list[-1]  # pose encoding of the last iteration 
-
             outputs = self._render_gs(predictions, images)
             predictions["renders"] = outputs
             return predictions
@@ -138,6 +138,7 @@ class VGGT_GS(VGGT):
         global_scales = scales.reshape(B,S*H*W,3)
         global_colors = original_colors if self.debug else sh_coeffs.reshape(B, S*H*W, Kx3//3, 3)
         global_opacities = opacities.reshape(B,S*H*W,1).squeeze(-1)
+        sh_degree = self.sh_degree if not self.debug else None
         # Camera parameters
         pose_enc = predictions["pose_enc"]
         extrinsics, intrinsics = pose_encoding_to_extri_intri(pose_enc, image_size_hw=images.shape[-2:]) # extrinsics: BxSx3x4, intrinsics: BxSx3x3   
@@ -158,7 +159,7 @@ class VGGT_GS(VGGT):
             means=global_points,
             quats=global_quats,
             scales=global_scales,
-            sh_degree=self.sh_degree,
+            sh_degree=sh_degree,
             colors=global_colors,
             opacities=global_opacities,
             viewmats=viewmats,

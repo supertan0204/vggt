@@ -663,7 +663,7 @@ class Trainer:
             # measure data loading time
             data_time.update(time.time() - end)
             data_times.append(data_time.val)
-            with torch.cuda.amp.autocast(enabled=False):
+            with torch.amp.autocast('cuda', enabled=False):
                 batch = self._process_batch(batch)
 
             batch = copy_data_to_device(batch, self.device, non_blocking=True)
@@ -836,13 +836,19 @@ class Trainer:
             batch = self._apply_batch_repetition(batch)
         
         # Normalize camera extrinsics and points. The function returns new tensors.
+        cam_points = batch["cam_points"] if "cam_points" in batch else None
+        world_points = batch["world_points"] if "world_points" in batch else None 
+        depths = batch["depths"] if "depths" in batch else None
+        point_masks = batch["point_masks"] if "point_masks" in batch else None
+        scale_by_points = cam_points!=None
         normalized_extrinsics, normalized_cam_points, normalized_world_points, normalized_depths = \
             normalize_camera_extrinsics_and_points_batch(
                 extrinsics=batch["extrinsics"],
-                cam_points=batch["cam_points"],
-                world_points=batch["world_points"],
-                depths=batch["depths"],
-                point_masks=batch["point_masks"],
+                cam_points=cam_points,
+                world_points=world_points,
+                depths=depths,
+                point_masks=point_masks,
+                scale_by_points=scale_by_points
             )
 
         # Replace the original values in the batch with the normalized ones.

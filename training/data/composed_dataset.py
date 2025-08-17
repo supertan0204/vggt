@@ -110,16 +110,11 @@ class ComposedDataset(Dataset, ABC):
         images = images.permute(0,3,1,2).to(torch.get_default_dtype()).div(255)
 
         # Convert other data to tensors with appropriate types
-        if batch["depths"] is not None:
-            # Convert depths to float32 tensor
-            depths = torch.from_numpy(np.stack(batch["depths"]).astype(np.float32))
-        else:
-            # If no depths are provided, create a dummy tensor
-            depths = torch.zeros((images.shape[0], 1, images.shape[2], images.shape[3]), dtype=torch.float32)
+        depths = torch.from_numpy(np.stack(batch["depths"]).astype(np.float32)) if batch["depths"] is not None else None
         extrinsics = torch.from_numpy(np.stack(batch["extrinsics"]).astype(np.float32))
         intrinsics = torch.from_numpy(np.stack(batch["intrinsics"]).astype(np.float32))
-        cam_points = torch.from_numpy(np.stack(batch["cam_points"]).astype(np.float32))
-        world_points = torch.from_numpy(np.stack(batch["world_points"]).astype(np.float32))
+        cam_points = torch.from_numpy(np.stack(batch["cam_points"]).astype(np.float32)) if batch["cam_points"] is not None else None 
+        world_points = torch.from_numpy(np.stack(batch["world_points"]).astype(np.float32)) if batch["world_points"] is not None else None 
         point_masks = torch.from_numpy(np.stack(batch["point_masks"])) # Mask indicating valid depths / world points / cam points per frame
         ids = torch.from_numpy(batch["ids"])    # Frame indices sampled from the original sequence
 
@@ -145,12 +140,12 @@ class ComposedDataset(Dataset, ABC):
             "ids": ids,
             "image_paths": batch["image_paths"],
             "images": images,
-            "depths": depths,
+            # "depths": depths,
             "extrinsics": extrinsics,
             "intrinsics": intrinsics,
-            "cam_points": cam_points,
-            "world_points": world_points,
-            "point_masks": point_masks,
+            # "cam_points": cam_points,
+            # "world_points": world_points,
+            # "point_masks": point_masks,
         }
 
         # --- Track Processing (if enabled) ---

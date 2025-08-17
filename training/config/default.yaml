@@ -42,29 +42,35 @@ data:
     dataset:
       _target_: training.data.composed_dataset.ComposedDataset
       dataset_configs:
-        - _target_: training.data.datasets.co3d.Co3dDataset
-          split: train
-          CO3D_DIR: /opt/dlami/nvme/xiyang/datasets/co3d
-          CO3D_ANNOTATION_DIR: /opt/dlami/nvme/xiyang/datasets/co3d_anno
+        # - _target_: training.data.datasets.co3d.Co3dDataset
+        #   split: train
+        #   CO3D_DIR: /opt/dlami/nvme/xiyang/datasets/co3d
+        #   CO3D_ANNOTATION_DIR: /opt/dlami/nvme/xiyang/datasets/co3d_anno
         # - _target_: training.data.datasets.dl3dv.DL3DVDataset
         #   DL3DV_ROOT: /opt/dlami/nvme/xiyang/datasets/DL3DV/DL3DV-10K
         #   divides: ['2K']
+        - _target_: training.data.datasets.zeroverse.ZeroVerseDataset
+          split: train
+          ZEROVERSE_DIR: /opt/dlami/nvme/data/zeroverse
   val:
     _target_: training.data.dynamic_dataloader.DynamicTorchDataset
     num_workers: ${num_workers}
     common_config:
       img_size: ${img_size}
       patch_size: ${patch_size}
-      debug: True
+      debug: False
     dataset:
       _target_: training.data.composed_dataset.ComposedDataset
       dataset_configs:
-        - _target_: training.data.datasets.co3d.Co3dDataset
-          split: test
+        # - _target_: training.data.datasets.co3d.Co3dDataset
+        #   split: test
           # CO3D_DIR: /checkpoint/repligen/shared/datasets/co3d/
           # CO3D_ANNOTATION_DIR: /checkpoint/repligen/jianyuan/datasets/co3d_anno
-          CO3D_DIR: /opt/dlami/nvme/xiyang/datasets/co3d
-          CO3D_ANNOTATION_DIR: /opt/dlami/nvme/xiyang/datasets/co3d_anno
+          # CO3D_DIR: /opt/dlami/nvme/xiyang/datasets/co3d
+          # CO3D_ANNOTATION_DIR: /opt/dlami/nvme/xiyang/datasets/co3d_anno
+        - _target_: training.data.datasets.zeroverse.ZeroVerseDataset
+          split: train
+          ZEROVERSE_DIR: /opt/dlami/nvme/data/zeroverse
 
 
 logging:
@@ -114,7 +120,7 @@ logging:
 checkpoint:
   save_dir: logs/${exp_name}/ckpts
   save_freq: 1
-  resume_checkpoint_path: /opt/dlami/nvme/xiyang/programs/vggt/ckpts/model.pt
+  resume_checkpoint_path: /home/ubuntu/xiyang/programs/vggt/ckpts/model.pt
   # resume_checkpoint_path: /opt/dlami/nvme/xiyang/programs/vggt/logs/exp001/ckpts/checkpoint_3.pt
   strict: False
 
