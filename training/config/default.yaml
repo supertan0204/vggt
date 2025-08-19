@@ -1,11 +1,11 @@
 defaults:
   - default_dataset.yaml
 
-exp_name: exp_sh
+exp_name: exp-8.19
 img_size: 518
-num_workers: 24
+num_workers: 12
 seed_value: 42
-accum_steps: 2
+accum_steps: 1
 patch_size: 14
 
 limit_train_batches: 800
@@ -22,15 +22,15 @@ data:
     common_config:
       img_size: ${img_size}
       patch_size: ${patch_size}
-      debug: False # need to be False for actual training
+      debug: True # need to be False for actual training
       image_nums: [2, 24]
-      repeat_batch: True
+      repeat_batch: False
 
       augs:
         cojitter: True
         cojitter_ratio: 0.3
         scales: [0.8, 1.2]
-        aspects: [0.33, 1.0]
+        aspects: [0.5, 1.0]
         color_jitter:
           brightness: 0.5
           contrast: 0.5
@@ -42,35 +42,33 @@ data:
     dataset:
       _target_: training.data.composed_dataset.ComposedDataset
       dataset_configs:
-        # - _target_: training.data.datasets.co3d.Co3dDataset
-        #   split: train
-        #   CO3D_DIR: /opt/dlami/nvme/xiyang/datasets/co3d
-        #   CO3D_ANNOTATION_DIR: /opt/dlami/nvme/xiyang/datasets/co3d_anno
+        - _target_: training.data.datasets.co3d.Co3dDataset
+          split: train
+          CO3D_DIR: /opt/dlami/nvme/data/co3d
+          CO3D_ANNOTATION_DIR: /opt/dlami/nvme/data/co3d_anno
         # - _target_: training.data.datasets.dl3dv.DL3DVDataset
         #   DL3DV_ROOT: /opt/dlami/nvme/xiyang/datasets/DL3DV/DL3DV-10K
         #   divides: ['2K']
-        - _target_: training.data.datasets.zeroverse.ZeroVerseDataset
-          split: train
-          ZEROVERSE_DIR: /opt/dlami/nvme/data/zeroverse
+        # - _target_: training.data.datasets.zeroverse.ZeroVerseDataset
+        #   split: train
+        #   ZEROVERSE_DIR: /opt/dlami/nvme/data/zeroverse
   val:
     _target_: training.data.dynamic_dataloader.DynamicTorchDataset
     num_workers: ${num_workers}
     common_config:
       img_size: ${img_size}
       patch_size: ${patch_size}
-      debug: False
+      debug: True
     dataset:
       _target_: training.data.composed_dataset.ComposedDataset
       dataset_configs:
-        # - _target_: training.data.datasets.co3d.Co3dDataset
+        - _target_: training.data.datasets.co3d.Co3dDataset
+          split: test
+          CO3D_DIR: /opt/dlami/nvme/data/co3d
+          CO3D_ANNOTATION_DIR: /opt/dlami/nvme/data/co3d_anno
+        # - _target_: training.data.datasets.zeroverse.ZeroVerseDataset
         #   split: test
-          # CO3D_DIR: /checkpoint/repligen/shared/datasets/co3d/
-          # CO3D_ANNOTATION_DIR: /checkpoint/repligen/jianyuan/datasets/co3d_anno
-          # CO3D_DIR: /opt/dlami/nvme/xiyang/datasets/co3d
-          # CO3D_ANNOTATION_DIR: /opt/dlami/nvme/xiyang/datasets/co3d_anno
-        - _target_: training.data.datasets.zeroverse.ZeroVerseDataset
-          split: train
-          ZEROVERSE_DIR: /opt/dlami/nvme/data/zeroverse
+        #   ZEROVERSE_DIR: /opt/dlami/nvme/data/zeroverse
 
 
 logging:
@@ -83,8 +81,9 @@ logging:
     train:
       keys_to_log:
          - renders
+         - original_images
       modality: image
-  visuals_per_batch_to_log: 8
+  visuals_per_batch_to_log: 4
   video_logging_fps: 15
   log_freq: 10
   log_level_primary: DEBUG
@@ -184,7 +183,7 @@ optim:
       #   max_norm: 1.0   # feel free to reduce this if you see instabilities
       #   norm_type: 2
       - module_name: ["gs_head"]
-        max_norm: 1.0
+        max_norm: 0.5
         norm_type: 2
   options:
     lr:
@@ -207,7 +206,7 @@ optim:
 
 
 
-max_epochs: 100
+max_epochs: 5
 
 model:
   _target_: vggt.models.vggt_gs.VGGT_GS

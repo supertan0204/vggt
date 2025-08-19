@@ -36,6 +36,11 @@ class MultitaskLoss(torch.nn.Module):
         self.point = point
         self.track = track
         self.rendering = rendering
+        # Initialize perceptual loss once
+        if rendering and rendering.enable:
+            self.perceptual_loss = PerceptualLoss(device="cuda")
+        else:
+            self.perceptual_loss = None
 
     def forward(self, predictions, batch) -> torch.Tensor:
         """
@@ -95,64 +100,46 @@ def compute_render_loss(
     batch_data,
     w_mse=1.0,
     w_perceptual=1.0,
+    perceptual_loss=None,  # Pass from class instance
     **kwargs
 ):
-    pred_render = pred_dict["renders"]
-    pred_gs_conf = pred_dict["gs_conf"]
+    pred_render = pred_dict["renders"]  # Shape: (B, S, H, W, 3)
+    gt_render = batch_data["images"]    # Shape: (B, S, H, W, 3)
     
-    gt_render = batch_data["images"]
+    # Vectorized MSE loss computation
+    if pred_render.shape != gt_render.shape:
+        raise ValueError(f"Shape mismatch: pred {pred_render.shape} vs gt {gt_render.shape}")
     
-    B = gt_render.shape[0]
-    total_mse_loss = 0.
-    total_perceptual_loss = 0.
-    perceptual_loss = PerceptualLoss(device="cuda")
-    for i in range(B):
-        total_mse_loss += compute_mse_loss_for_one_scene(pred_render[i], gt_render[i])
-        total_perceptual_loss += compute_perceptual_loss_for_one_scene(pred_render[i], gt_render[i], perceptual_loss)
-    # logging.info(f"total_mse_loss: {total_mse_loss/float(B)}")
-    # logging.info(f"total_perceptual_loss: {total_perceptual_loss/float(B)}")
-    total_render_loss = w_mse * total_mse_loss + w_perceptual * total_perceptual_loss
-    total_render_loss = total_render_loss / float(B)
-    loss_dict = {
-        "render_loss": total_render_loss
+    # Ensure correct format: (B, S, 3, H, W) for efficient processing
+    if pred_render.shape[-1] == 3:  # If last dim is channels
+        pred_render = pred_render.permute(0, 1, 4, 2, 3).contiguous()
+        gt_render = gt_render.permute(0, 1, 4, 2, 3).contiguous()
+    
+    # Vectorized MSE loss - process entire batch at once
+    mse_loss = F.mse_loss(pred_render, gt_render, reduction='mean')
+    
+    # Vectorized perceptual loss - process entire batch at once
+    if perceptual_loss is not None and w_perceptual > 0:
+        # Reshape to (B*S, 3, H, W) for batch processing
+        B, S = pred_render.shape[:2]
+        pred_flat = pred_render.view(B * S, *pred_render.shape[2:])
+        gt_flat = gt_render.view(B * S, *gt_render.shape[2:])
+        
+        perceptual_loss_val = perceptual_loss(pred_flat, gt_flat)
+        
+        del pred_flat, gt_flat
+    else:
+        perceptual_loss_val = 0.0
+    
+    # Compute total loss
+    total_render_loss = w_mse * mse_loss + w_perceptual * perceptual_loss_val
+    
+    return {
+        "render_loss": total_render_loss,
+        "mse_loss": mse_loss,
+        "perceptual_loss": perceptual_loss_val
     }
-    return loss_dict
         
-def compute_perceptual_loss_for_one_scene(predicted_scene_tensor, gt_scene_tensor, perceptual_loss):
-        # Ensure tensors are of the same shape
-        if gt_scene_tensor.shape[1] != 3: # indicates S, H, W, 3
-            gt_scene_tensor = gt_scene_tensor.permute(0, 3, 1, 2).contiguous()
-        if predicted_scene_tensor.shape[1] != 3: # indicates S, H, W, 3
-            predicted_scene_tensor = predicted_scene_tensor.permute(0, 3, 1, 2).contiguous()
-        if predicted_scene_tensor.shape != gt_scene_tensor.shape:
-            raise ValueError(f"Shape mismatch: predicted tensor shape {predicted_scene_tensor.shape} does not match ground truth shape {gt_scene_tensor.shape}")
-        result = perceptual_loss(predicted_scene_tensor, gt_scene_tensor)
-        # logging.info(f"perceptual loss for one scene: {result}")
-        return result
-
-def compute_mse_loss_for_one_scene(predicted_scene_tensor, gt_scene_tensor):
-    """
-    Compute the MSE loss of a single scene given prediction and ground truth
-    Arguments:
-        predicted_scene_tensor: tensor with shape (S, 3, H, W)
-        gt_scene_tensor: tensor with shape (S, 3, H, W)
-    Returns:
-        mse_loss: The computed MSE loss (scalar)
-    """
-    # Ensure are all tensors
-    assert isinstance(predicted_scene_tensor, torch.Tensor) and isinstance(gt_scene_tensor, torch.Tensor)
-        
-        # Ensure tensors are of the same shape
-    if gt_scene_tensor.shape[1] != 3: # indicates S, H, W, 3
-        gt_scene_tensor = gt_scene_tensor.permute(0, 3, 1, 2).contiguous()
-    if predicted_scene_tensor.shape[1] != 3: # indicates S, H, W, 3
-        predicted_scene_tensor = predicted_scene_tensor.permute(0, 3, 1, 2).contiguous()
-    if predicted_scene_tensor.shape != gt_scene_tensor.shape:
-        raise ValueError(f"Shape mismatch: predicted tensor shape {predicted_scene_tensor.shape} does not match ground truth shape {gt_scene_tensor.shape}")
-
-
-    # Compute MSE loss and return
-    return F.mse_loss(predicted_scene_tensor, gt_scene_tensor)
         
 
 

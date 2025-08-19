@@ -278,7 +278,7 @@ class Trainer:
 
 
         # Use standard Gradient Scaler for DDP
-        self.scaler = torch.cuda.amp.GradScaler(enabled=self.optim_conf.amp.enabled)
+        self.scaler = torch.amp.GradScaler('cuda', enabled=self.optim_conf.amp.enabled)
         self.gradient_clipper = instantiate(self.optim_conf.gradient_clip)
 
         logging.info("Successfully initialized all training components: model, loss function, optimizer, and etc.")
@@ -570,7 +570,7 @@ class Trainer:
 
             if data_iter % self.logging_conf.log_freq == 0:
                 progress.display(data_iter)
-
+                
         self.est_epoch_time['val'] = batch_time.avg * iters_per_epoch
         self._log_sync_data_times('val', data_times)
 
@@ -611,7 +611,7 @@ class Trainer:
 
 
 
-    def train_epoch(self, train_loader):        
+    def train_epoch(self, train_loader):      
         batch_time = AverageMeter("Batch Time", self.device, ":.4f")
         data_time = AverageMeter("Data Time", self.device, ":.4f")
         mem = AverageMeter("Mem (GB)", self.device, ":.4f")
@@ -743,6 +743,15 @@ class Trainer:
 
             if data_iter % self.logging_conf.log_freq == 0:
                 progress.display(data_iter)
+             # periodic memory cleanup 
+            if data_iter % 100 == 0:  # Every 100 steps clear cache to prevent OOM
+                torch.cuda.empty_cache()
+                gc.collect()
+            if data_iter % 200 == 0:
+                for d in range(torch.cuda.device_count()):
+                    print(f"[mem d{d}] max_alloc={torch.cuda.max_memory_allocated(d)/1024**2:.1f}MB, "
+                            f"max_reserved={torch.cuda.max_memory_reserved(d)/1024**2:.1f}MB")
+                torch.cuda.reset_peak_memory_stats()
 
         return True
 
@@ -779,10 +788,11 @@ class Trainer:
             )
 
             with ddp_context:
-                with torch.cuda.amp.autocast(
-                    enabled=self.optim_conf.amp.enabled,
-                    dtype=amp_type,
-                ):
+                with torch.amp.autocast(
+                        device_type="cuda",
+                        enabled=self.optim_conf.amp.enabled,
+                        dtype=amp_type,
+                    ):
                     loss_dict = self._step(
                         chunked_batch, self.model, phase, loss_meters
                     )
@@ -800,7 +810,12 @@ class Trainer:
                 loss /= accum_steps
                 self.scaler.scale(loss).backward()
                 loss_meters[loss_key].update(loss.item(), batch_size)
-            
+                
+                # Explicit memory cleanup after each chunk
+                del loss_dict, loss
+                if i < accum_steps - 1: # Don't clear on last step
+                    torch.cuda.empty_cache()
+        torch.cuda.empty_cache()
 
 
 
