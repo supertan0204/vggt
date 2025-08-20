@@ -119,8 +119,8 @@ logging:
 checkpoint:
   save_dir: logs/${exp_name}/ckpts
   save_freq: 1
-  resume_checkpoint_path: /home/ubuntu/xiyang/programs/vggt/ckpts/model.pt
-  # resume_checkpoint_path: /opt/dlami/nvme/xiyang/programs/vggt/logs/exp001/ckpts/checkpoint_3.pt
+  # resume_checkpoint_path: /home/ubuntu/xiyang/programs/vggt/ckpts/model.pt
+  resume_checkpoint_path: /home/ubuntu/xiyang/programs/vggt/logs/exp-8.19/ckpts/checkpoint_3.pt
   strict: False
 
 

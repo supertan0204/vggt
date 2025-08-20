@@ -57,71 +57,8 @@ class VGGT_GS(VGGT):
             conf_activation="expp1",
         )
         self.spls = torch.nn.Softplus()
-
-    def export_3dgs(self, predictions: dict, images: torch.Tensor, filepath: str:
-        """
-        Export current 3DGS scene as a checkpoint using gsplat.export_splats.
-
-        Args:
-            predictions: Model predictions containing keys 'gs_features', 'gs_conf', 'world_points'.
-            images: Input images tensor of shape [B, S, 3, H, W] (or [S, 3, H, W] which will be expanded).
-            filepath: Output file path (e.g., '/path/to/scene.ply' or '/path/to/scene.splat').
-            fmt: Output format, one of {'ply', 'splat', 'compressed_ply'}.
-        """
-        # Normalize image dims
-        if images.dim() == 4:
-            images = images.unsqueeze(0)
-
-        # Parse GS features similar to rendering path
-        gs_features = predictions["gs_features"]  # B,S,H,W,F
-        points = predictions["world_points"]      # B,S,H,W,3
-        B, S, H, W, _ = gs_features.shape
-
-        # Colors from images for debug; otherwise SH coefficients from features
-        original_colors = images.permute(0, 1, 3, 4, 2).reshape(B, -1, 3)  # B, S*H*W, 3
-
-        # Extract params
-        scale_factor = 1e-3
-        Kx3 = (self.sh_degree + 1) ** 2 * 3
-        sh_coeffs = gs_features[..., :Kx3].reshape(B, S, H, W, Kx3 // 3, 3)
-        scales = torch.clamp(self.spls(gs_features[..., Kx3:Kx3 + 3]) * scale_factor, max=0.5)
-        quats = gs_features[..., Kx3 + 3:Kx3 + 7]
-        opacities = torch.sigmoid(gs_features[..., -1:])  # B,S,H,W,1
-
-        # Flatten per-scene
-        means_flat = points.reshape(B, S * H * W, 3)
-        quats_flat = quats.reshape(B, S * H * W, 4)
-        scales_flat = scales.reshape(B, S * H * W, 3)
-        if self.debug:
-            colors_flat = original_colors
-            sh_degree = None
-        else:
-            colors_flat = sh_coeffs.reshape(B, S * H * W, Kx3 // 3, 3)
-            sh_degree = self.sh_degree
-        opacities_flat = opacities.reshape(B, S * H * W)
-
-        # Export only the first scene in batch
-        means_out = means_flat[0].detach().contiguous()
-        quats_out = quats_flat[0].detach().contiguous()
-        scales_out = scales_flat[0].detach().contiguous()
-        opacities_out = opacities_flat[0].detach().contiguous()
-        colors_out = colors_flat[0].detach().contiguous()
-
-        # Call gsplat export
-        # Note: export_splats supports SH colors when sh_degree is provided, otherwise expects RGB
-        export_splats(
-            means=means_out,
-            quats=quats_out,
-            scales=scales_out,
-            opacities=opacities_out,
-            sh0=colors_out[:,:1,:],
-            shN=colors_out[:,1:,:],
-            save_to=filepath,
-        )
-        logging.info(f"Exported 3DGS scene to {filepath} (format={fmt}, sh_degree={sh_degree})")
-
     
-    def forward(self, images: torch.Tensor, query_points: torch.Tensor = None):
+    def forward(self, images: torch.Tensor, query_points: torch.Tensor = None, step: int = 0):
         """
         Forward pass of the VGGT model finetuned for GS prediction.
         
@@ -163,12 +100,12 @@ class VGGT_GS(VGGT):
             if self.camera_head is not None:
                 pose_enc_list = self.camera_head(aggregated_tokens_list)
                 predictions["pose_enc"] = pose_enc_list[-1]  # pose encoding of the last iteration 
-            outputs = self._render_gs(predictions, images)
+            outputs = self._render_gs(predictions, images, step)
             predictions["renders"] = outputs
             predictions["original_images"] = images
             return predictions
     
-    def _render_gs(self, predictions: dict, images: torch.Tensor):
+    def _render_gs(self, predictions: dict, images: torch.Tensor, step: int):
         """
         Render 3DGS image based on model predictions.
         Args:
@@ -213,12 +150,12 @@ class VGGT_GS(VGGT):
         
         outputs = []
         
-        if self.debug:
-            save_ply(
-                global_points[0], 
-                global_colors[0], 
-                "debug.ply"
-            )
+        # if self.debug:
+        #     save_ply(
+        #         global_points[0], 
+        #         global_colors[0], 
+        #         "debug.ply"
+        #     )
         # batch rasterization
         renders, alphas, meta = rasterization(
             means=global_points,
@@ -233,17 +170,44 @@ class VGGT_GS(VGGT):
             width=W,
             packed=False,
         )
-            
-        # batch_output = {}
-        
-        # batch_output["renders"] = renders
-        # batch_output["alphas"] = alphas
-        # batch_output["meta"] = meta
-        # batch_output["gs_conf"] = gs_conf
         outputs = renders.permute(0,1,4,2,3).contiguous()
+        
+        # for some training steps, save 3dgs checkpoints
+        if step % 1 == 0:
+            with torch.no_grad():
+                for b in range(B):
+                    save_path = f"saving/scene_step_{step}_batch_{b}"
+                    # export_splats(
+                    #     means=global_points[b],
+                    #     quats=global_quats[b],
+                    #     scales=global_scales[b],
+                    #     opacities=global_opacities[b],
+                    #     sh0=global_colors[b,:,:1,:],
+                    #     shN=global_colors[b,:,1:,:],
+                    #     save_to=save_path,
+                    #     format="ply_compressed"
+                    # )
+                    # logging.info(f"saved at {save_path}")
+                    load_barrier = 150000
+                    data = {
+                            "step": step, 
+                            "splats": 
+                                {
+                                   "means": global_points[b][:load_barrier],
+                                   "quats": global_quats[b][:load_barrier],
+                                   "scales": 1e-3*global_scales[b][:load_barrier],
+                                   "opacities": global_opacities[b][:load_barrier],
+                                   "sh0": global_colors[b, :, :1, :][:load_barrier],
+                                   "shN": global_colors[b, :, 1:, :][:load_barrier], 
+                                }
+                            }
+                    torch.save(data, f"{save_path}.pt")
+                    logging.info(f"scene data saved at {save_path}")
+                
 
         return outputs
     
+
 
 def save_ply(points, colors, filename):
     import open3d as o3d   

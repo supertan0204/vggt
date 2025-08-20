@@ -58,6 +58,7 @@ from training.train_utils.freeze import freeze_modules
 from training.train_utils.optimizer import construct_optimizers
 from training.train_utils.normalization import normalize_camera_extrinsics_and_points_batch
 from training.train_utils.checkpoint import DDPCheckpointSaver
+from gsplat import export_splats
 
 
 
@@ -278,7 +279,7 @@ class Trainer:
 
 
         # Use standard Gradient Scaler for DDP
-        self.scaler = torch.amp.GradScaler('cuda', enabled=self.optim_conf.amp.enabled)
+        self.scaler = torch.cuda.amp.GradScaler(enabled=self.optim_conf.amp.enabled)
         self.gradient_clipper = instantiate(self.optim_conf.gradient_clip)
 
         logging.info("Successfully initialized all training components: model, loss function, optimizer, and etc.")
@@ -883,44 +884,42 @@ class Trainer:
         phase: str,
         loss_meters: dict[str, AverageMeter],
     ): 
-        # logging.info(f"batch_shape: {batch['images'].shape}")
+        import pdb;pdb.set_trace()
         # Forward run of the model
-        y_hat = model(images = batch["images"]) # batch["images"] has shape B,S,3,H,W
-        # Compute the loss
+        y_hat = model(images=batch["images"], step=self.steps[phase]) # batch["images"] has shape B,S,3,H,W
         
+        # Compute the loss
         loss_dict = self.loss(y_hat, batch)
         # concatenate y_hat, loss_dict and batch for visualizations
         y_hat_batch = {**y_hat, **loss_dict, **batch}
         
         # write images for visualization
-        # B = batch["images"].shape[0]
-        # S = batch["images"].shape[1]
-        # import numpy as np
-        # for b in range(B):
-        #     for s in range(S):
+        B = batch["images"].shape[0]
+        S = batch["images"].shape[1]
+        import numpy as np
+        for b in range(B):
+            for s in range(S):
         #         # write original image
         #         tensor_original = batch["images"][b,s] * 255.
         #         tensor_np_original = (tensor_original.permute(1,2,0).detach().cpu().numpy()).astype(np.uint8)
         #         image_original = Image.fromarray(tensor_np_original)
         #         image_original.save(f"./saving/original_{b}_{s}.png")
                 
-        #         # write predicted image
-        #         tensor_predicted = y_hat["renders"][b,s].permute(1,2,0).detach().cpu()
-        #         tensor_predicted = tensor_predicted * 255.
-        #         tensor_np_predicted = tensor_predicted.numpy().astype(np.uint8)
-        #         image_predicted = Image.fromarray(tensor_np_predicted)
-        #         image_predicted.save(f"./saving/predicted_{b}_{s}.png")
+                # write predicted image
+                tensor_predicted = y_hat["renders"][b,s].permute(1,2,0).detach().cpu()
+                tensor_predicted = tensor_predicted * 255.
+                tensor_np_predicted = tensor_predicted.numpy().astype(np.uint8)
+                image_predicted = Image.fromarray(tensor_np_predicted)
+                image_predicted.save(f"./saving/predicted_{b}_{s}.png")
                 
-        #         # del tensor_np_original
-        #         del tensor_np_predicted
+                # del tensor_np_original
+                del tensor_np_predicted
 
         self._update_and_log_scalars(y_hat_batch, phase, self.steps[phase], loss_meters)
         self._log_tb_visuals(y_hat_batch, phase, self.steps[phase])
 
-        self.steps[phase] += 1
 
         return loss_dict
-
 
 
     def _update_and_log_scalars(
