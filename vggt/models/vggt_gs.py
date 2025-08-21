@@ -127,7 +127,7 @@ class VGGT_GS(VGGT):
         
         
         # feature extraction
-        scale_factor = 1e-3
+        scale_factor = 2e-3
         Kx3 = (self.sh_degree + 1)**2 * 3
         sh_coeffs = gs_features[..., :Kx3].reshape(B,S,H,W,Kx3//3,3)
         scales = torch.clamp(self.spls(gs_features[..., Kx3:Kx3+3])*scale_factor,max=0.5)
@@ -173,7 +173,7 @@ class VGGT_GS(VGGT):
         outputs = renders.permute(0,1,4,2,3).contiguous()
         
         # for some training steps, save 3dgs checkpoints
-        if step % 1 == 0:
+        if step % 150 == 0 and step != 0:
             with torch.no_grad():
                 for b in range(B):
                     save_path = f"saving/scene_step_{step}_batch_{b}"
@@ -188,17 +188,17 @@ class VGGT_GS(VGGT):
                     #     format="ply_compressed"
                     # )
                     # logging.info(f"saved at {save_path}")
-                    load_barrier = 150000
+                    load_barrier = 200000
                     data = {
                             "step": step, 
                             "splats": 
                                 {
-                                   "means": global_points[b][:load_barrier],
-                                   "quats": global_quats[b][:load_barrier],
-                                   "scales": 1e-3*global_scales[b][:load_barrier],
-                                   "opacities": global_opacities[b][:load_barrier],
-                                   "sh0": global_colors[b, :, :1, :][:load_barrier],
-                                   "shN": global_colors[b, :, 1:, :][:load_barrier], 
+                                   "means": torch.nn.Parameter(global_points[b][:load_barrier]),
+                                   "quats": torch.nn.Parameter(global_quats[b][:load_barrier]),
+                                   "scales": torch.nn.Parameter(global_scales[b][:load_barrier]),
+                                   "opacities": torch.nn.Parameter(global_opacities[b][:load_barrier]),
+                                   "sh0": torch.nn.Parameter(global_colors[b, :, :1, :][:load_barrier]),
+                                   "shN": torch.nn.Parameter(global_colors[b, :, 1:, :][:load_barrier]), 
                                 }
                             }
                     torch.save(data, f"{save_path}.pt")

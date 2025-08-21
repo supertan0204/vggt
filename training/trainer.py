@@ -884,7 +884,6 @@ class Trainer:
         phase: str,
         loss_meters: dict[str, AverageMeter],
     ): 
-        import pdb;pdb.set_trace()
         # Forward run of the model
         y_hat = model(images=batch["images"], step=self.steps[phase]) # batch["images"] has shape B,S,3,H,W
         
@@ -896,24 +895,24 @@ class Trainer:
         # write images for visualization
         B = batch["images"].shape[0]
         S = batch["images"].shape[1]
-        import numpy as np
-        for b in range(B):
-            for s in range(S):
+        # import numpy as np
+        # for b in range(B):
+        #     for s in range(S):
         #         # write original image
         #         tensor_original = batch["images"][b,s] * 255.
         #         tensor_np_original = (tensor_original.permute(1,2,0).detach().cpu().numpy()).astype(np.uint8)
         #         image_original = Image.fromarray(tensor_np_original)
         #         image_original.save(f"./saving/original_{b}_{s}.png")
                 
-                # write predicted image
-                tensor_predicted = y_hat["renders"][b,s].permute(1,2,0).detach().cpu()
-                tensor_predicted = tensor_predicted * 255.
-                tensor_np_predicted = tensor_predicted.numpy().astype(np.uint8)
-                image_predicted = Image.fromarray(tensor_np_predicted)
-                image_predicted.save(f"./saving/predicted_{b}_{s}.png")
+                # # write predicted image
+                # tensor_predicted = y_hat["renders"][b,s].permute(1,2,0).detach().cpu()
+                # tensor_predicted = tensor_predicted * 255.
+                # tensor_np_predicted = tensor_predicted.numpy().astype(np.uint8)
+                # image_predicted = Image.fromarray(tensor_np_predicted)
+                # image_predicted.save(f"./saving/predicted_{b}_{s}.png")
                 
-                # del tensor_np_original
-                del tensor_np_predicted
+                # # del tensor_np_original
+                # del tensor_np_predicted
 
         self._update_and_log_scalars(y_hat_batch, phase, self.steps[phase], loss_meters)
         self._log_tb_visuals(y_hat_batch, phase, self.steps[phase])

@@ -1,11 +1,11 @@
 defaults:
   - default_dataset.yaml
 
-exp_name: exp-8.19
+exp_name: exp-8.20
 img_size: 518
 num_workers: 12
 seed_value: 42
-accum_steps: 1
+accum_steps: 2
 patch_size: 14
 
 limit_train_batches: 800
@@ -119,8 +119,8 @@ logging:
 checkpoint:
   save_dir: logs/${exp_name}/ckpts
   save_freq: 1
-  # resume_checkpoint_path: /home/ubuntu/xiyang/programs/vggt/ckpts/model.pt
-  resume_checkpoint_path: /home/ubuntu/xiyang/programs/vggt/logs/exp-8.19/ckpts/checkpoint_3.pt
+  resume_checkpoint_path: /home/ubuntu/xiyang/programs/vggt/ckpts/model.pt
+  # resume_checkpoint_path: /home/ubuntu/xiyang/programs/vggt/logs/exp-8.19/ckpts/checkpoint_3.pt
   strict: False
 
 
