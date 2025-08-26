@@ -571,6 +571,8 @@ class Trainer:
 
             if data_iter % self.logging_conf.log_freq == 0:
                 progress.display(data_iter)
+            # increment validation step counter
+            self.steps[phase] += 1
                 
         self.est_epoch_time['val'] = batch_time.avg * iters_per_epoch
         self._log_sync_data_times('val', data_times)
@@ -753,6 +755,8 @@ class Trainer:
                     print(f"[mem d{d}] max_alloc={torch.cuda.max_memory_allocated(d)/1024**2:.1f}MB, "
                             f"max_reserved={torch.cuda.max_memory_reserved(d)/1024**2:.1f}MB")
                 torch.cuda.reset_peak_memory_stats()
+            # increment training step counter
+            self.steps[phase] += 1
 
         return True
 

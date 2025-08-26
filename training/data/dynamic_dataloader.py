@@ -174,7 +174,14 @@ class DynamicBatchSampler(Sampler):
                 batch_size = self.max_img_per_gpu / random_image_num
                 batch_size = np.floor(batch_size).astype(int)
                 batch_size = max(1, batch_size)  # Ensure batch size is at least 1
-
+                
+                
+                ######################################################################################################################################
+                ### XYT: one batch maps to a image sequence in the dataset, batch_size represents how many sequences were chosen.                  ###
+                ### XYT: every gpu handles batch_size x batches, every batch has image_num images, so always, a gpu handles max_img_per_gpu images.###
+                ######################################################################################################################################
+                
+                
                 # Collect samples for the current batch
                 current_batch = []
                 for _ in range(batch_size):

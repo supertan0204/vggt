@@ -173,7 +173,7 @@ class VGGT_GS(VGGT):
         outputs = renders.permute(0,1,4,2,3).contiguous()
         
         # for some training steps, save 3dgs checkpoints
-        if step % 150 == 0 and step != 0:
+        if step % 10000 == 0 and step != 0:
             with torch.no_grad():
                 for b in range(B):
                     save_path = f"saving/scene_step_{step}_batch_{b}"
