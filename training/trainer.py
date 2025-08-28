@@ -62,6 +62,16 @@ from gsplat import export_splats
 
 
 
+def unwrap_ddp_or_fsdp_if_wrapped(module: nn.Module) -> nn.Module:
+    """Return underlying module if wrapped (DDP); otherwise return as-is.
+
+    Note: This codebase only uses standard DDP; FSDP is not expected.
+    """
+    if isinstance(module, nn.parallel.DistributedDataParallel):
+        return module.module
+    return module
+
+
 class Trainer:
     """
     Trainer supporting the DDP training strategies.
@@ -166,6 +176,7 @@ class Trainer:
         """
         self.start_time = time.time()
         self.ckpt_time_elapsed = 0
+        self.est_epoch_time = {"train": 0.0, "val": 0.0}
 
 
     def _get_meters(self, phase_filters=None):
@@ -236,6 +247,67 @@ class Trainer:
 
 
 
+    def _log_sync_data_times(self, phase: str, data_times: List[float]) -> Optional[float]:
+        """
+        Compute a (distributed) average of data loading times for this phase and
+        log it to TensorBoard at the current epoch. Returns the global average.
+        """
+        if not data_times:
+            return None
+
+        # Sum and count locally
+        device = self.device if torch.cuda.is_available() else torch.device("cpu")
+        local = torch.tensor([float(np.sum(data_times)), float(len(data_times))], device=device)
+
+        # All-reduce across ranks for global mean
+        if is_dist_avail_and_initialized():
+            dist.all_reduce(local, op=dist.ReduceOp.SUM)
+
+        total_sum, total_count = local[0].item(), max(local[1].item(), 1.0)
+        global_avg = total_sum / total_count
+
+        # Only rank 0 writes a scalar
+        if getattr(self, "distributed_rank", 0) == 0 and hasattr(self, "tb_writer"):
+            self.tb_writer.log(f"Times/{phase}/DataTimeAvg", global_avg, int(self.epoch))
+
+        return global_avg
+
+    def _log_meters_and_save_best_ckpts(self, phases: Sequence[str]) -> Dict[str, float]:
+        """
+        Aggregate any registered meters (if present) into a flat dict for logging.
+        This minimal implementation does not assume a specific 'best' metric; it
+        simply exposes meter averages. If you later want 'best ckpt' behavior,
+        you can extend this to track and compare a chosen key (e.g., Loss/val_objective).
+        """
+        out: Dict[str, float] = {}
+
+        # Collect averages from any meters registered via self.meters
+        # (_get_meters gracefully handles None)
+        for name, meter in self._get_meters(phases).items():
+            # Prefer .avg, fallback to .val if needed
+            val = getattr(meter, "avg", None)
+            if val is None:
+                val = getattr(meter, "val", None)
+            if val is not None:
+                try:
+                    out[name] = float(val)
+                except Exception:
+                    # Keep robust if a meter stores non-scalar values
+                    pass
+
+        # --- Optional place for "best checkpoint" logic (left minimal on purpose) ---
+        # Example (uncomment to enable when you have a chosen metric available here):
+        # monitor_key = "Loss/val_objective"
+        # if monitor_key in out:
+        #     current = out[monitor_key]
+        #     if not hasattr(self, "_best_val_obj"):
+        #         self._best_val_obj = float("inf")
+        #     if current < self._best_val_obj and getattr(self, "distributed_rank", 0) == 0:
+        #         self._best_val_obj = current
+        #         # Save a "best" checkpoint snapshot
+        #         self.save_checkpoint(self.epoch, checkpoint_names=["checkpoint_best"])
+
+        return out
 
     def _setup_device(self, device):
         self.local_rank, self.distributed_rank = get_machine_local_and_dist_rank()
