@@ -822,7 +822,7 @@ class Trainer:
             if data_iter % 100 == 0:  # Every 100 steps clear cache to prevent OOM
                 torch.cuda.empty_cache()
                 gc.collect()
-            if data_iter % 200 == 0:
+            if data_iter % 200 == 0 and data_iter != 0:
                 for d in range(torch.cuda.device_count()):
                     print(f"[mem d{d}] max_alloc={torch.cuda.max_memory_allocated(d)/1024**2:.1f}MB, "
                             f"max_reserved={torch.cuda.max_memory_reserved(d)/1024**2:.1f}MB")

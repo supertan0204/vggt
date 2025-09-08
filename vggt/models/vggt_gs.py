@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import open3d as o3d
 import logging
-
+import torch.distributed as dist
 
 from vggt.models.aggregator import Aggregator
 from vggt.heads.camera_head import CameraHead
@@ -30,7 +30,8 @@ class VGGT_GS(VGGT):
                 enable_depth=True,
                 enable_point=True,
                 enable_track=True,
-                debug=False
+                debug=False,
+                use_distributed_render=False
                 ):  # Ensure embed_dim is passed
         """
         Inherit from VGGT and add GS head.
@@ -49,6 +50,7 @@ class VGGT_GS(VGGT):
                          enable_track=enable_track,
                          )  # Pass embed_dim to the parent class
         self.debug = debug
+        self.use_distributed_render = use_distributed_render
         self.sh_degree = sh_degree
         self.gs_head = DPTHead(
             dim_in=2*embed_dim,
@@ -104,7 +106,32 @@ class VGGT_GS(VGGT):
             predictions["renders"] = outputs
             predictions["original_images"] = images
             return predictions
-    
+    def _dist_shard_gaussians(self, pts, quats, scales, colors, opacities):
+        # 约定形状：pts=(B, N, 3); quats=(B, N, 4); scales=(B, N, 3);
+        # colors=(B, N, K, 3) 或 (B, N, 3)（debug 情况）；opacities=(B, N)
+        assert pts.dim() == 3 and pts.size(1) > 0, "Expect pts shape [B, N, 3]"
+        world_size = dist.get_world_size()
+        rank = dist.get_rank()
+        N_total = pts.size(1)
+        # 等分 contiguous 切片（简单稳定且无额外开销）
+        start = (N_total * rank) // world_size
+        end   = (N_total * (rank + 1)) // world_size
+        sl = slice(start, end)
+
+        pts      = pts[:, sl, :]
+        quats    = quats[:, sl, :]
+        scales   = scales[:, sl, :]
+        opacities= opacities[:, sl]            # 注意你的代码里是 squeeze(-1) 过后的 (B, N)
+        # colors 既可能是 (B, N, 3) 也可能是 (B, N, K, 3)
+        if colors.dim() == 3:
+            colors = colors[:, sl, :]
+        elif colors.dim() == 4:
+            colors = colors[:, sl, :, :]
+        else:
+            raise ValueError("Unexpected colors shape")
+
+        return pts, quats, scales, colors, opacities
+
     def _render_gs(self, predictions: dict, images: torch.Tensor, step: int):
         """
         Render 3DGS image based on model predictions.
@@ -168,7 +195,8 @@ class VGGT_GS(VGGT):
             Ks=intrinsics,
             height=H,
             width=W,
-            packed=False,
+            packed=True,
+            distributed=self.use_distributed_render,
         )
         outputs = renders.permute(0,1,4,2,3).contiguous()
         
