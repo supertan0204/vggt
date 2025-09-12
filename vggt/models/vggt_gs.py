@@ -1,6 +1,7 @@
 from vggt.models.vggt import VGGT
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import open3d as o3d
 import logging
 import torch.distributed as dist
@@ -102,6 +103,7 @@ class VGGT_GS(VGGT):
             if self.camera_head is not None:
                 pose_enc_list = self.camera_head(aggregated_tokens_list)
                 predictions["pose_enc"] = pose_enc_list[-1]  # pose encoding of the last iteration 
+                predictions["pose_enc_list"] = pose_enc_list
             outputs = self._render_gs(predictions, images, step)
             predictions["renders"] = outputs
             predictions["original_images"] = images
@@ -154,9 +156,15 @@ class VGGT_GS(VGGT):
         
         
         # feature extraction
-        scale_factor = 2e-3
+        scale_factor = 1e-3
         Kx3 = (self.sh_degree + 1)**2 * 3
         sh_coeffs = gs_features[..., :Kx3].reshape(B,S,H,W,Kx3//3,3)
+        
+        sh = sh_coeffs.reshape(B,-1,Kx3//3,3)
+        # sh_safe = stabilize_sh(sh_, sh_degree=self.sh_degree, hdr_max=6.0,
+        #                make_dc_nonneg=True, tanh_cap_for_ac=True)
+        
+        
         scales = torch.clamp(self.spls(gs_features[..., Kx3:Kx3+3])*scale_factor,max=0.5)
         quats = gs_features[..., Kx3+3:Kx3+7]
         opacities = torch.sigmoid(gs_features[..., -1:])
@@ -165,7 +173,9 @@ class VGGT_GS(VGGT):
         global_points = points.reshape(B,S*H*W,3)
         global_quats = quats.reshape(B,S*H*W,4)
         global_scales = scales.reshape(B,S*H*W,3)
-        global_colors = original_colors if self.debug else sh_coeffs.reshape(B, S*H*W, Kx3//3, 3)
+        # global_colors = original_colors if self.debug else sh_coeffs.reshape(B, S*H*W, Kx3//3, 3)
+        global_colors = (original_colors if self.debug
+                 else sh)  # shape: (B, N, K, 3)
         global_opacities = opacities.reshape(B,S*H*W,1).squeeze(-1)
         sh_degree = self.sh_degree if not self.debug else None
         # Camera parameters
@@ -184,21 +194,78 @@ class VGGT_GS(VGGT):
         #         "debug.ply"
         #     )
         # batch rasterization
-        renders, alphas, meta = rasterization(
-            means=global_points,
-            quats=global_quats,
-            scales=global_scales,
-            sh_degree=sh_degree,
-            colors=global_colors,
-            opacities=global_opacities,
-            viewmats=viewmats,
-            Ks=intrinsics,
-            height=H,
-            width=W,
-            packed=True,
-            distributed=self.use_distributed_render,
-        )
-        outputs = renders.permute(0,1,4,2,3).contiguous()
+        
+        # dist shard gaussians
+        if self.use_distributed_render:
+            if not (dist.is_available() and dist.is_initialized()):
+                raise RuntimeError("use_distributed_render=True but torch.distributed is not initialized")
+            (global_points,
+            global_quats,
+            global_scales,
+            global_colors,
+            global_opacities) = self._dist_shard_gaussians(
+                global_points, global_quats, global_scales, global_colors, global_opacities
+            )
+            
+        
+        if not self.use_distributed_render:
+            renders, alphas, meta = rasterization(
+                means=global_points,
+                quats=global_quats,
+                scales=global_scales,
+                sh_degree=sh_degree,
+                colors=global_colors,
+                opacities=global_opacities,
+                viewmats=viewmats,
+                Ks=intrinsics,
+                height=H,
+                width=W,
+                packed=True,
+                distributed=self.use_distributed_render,
+            )
+            outputs = renders.permute(0,1,4,2,3).contiguous()
+        else:
+            if not (dist.is_available() and dist.is_initialized()):
+                raise RuntimeError("use_distributed_render=True 但未初始化 torch.distributed")
+
+            renders_list = []
+            # 逐个 batch 处理；viewmats 与 Ks 也按 b 取出，去掉 batch 维
+            for b in range(B):
+                pts_b   = global_points[b:b+1]      # 形状 (1, N, 3)
+                quat_b  = global_quats[b:b+1]       # (1, N, 4)
+                scale_b = global_scales[b:b+1]      # (1, N, 3)
+                col_b   = global_colors[b:b+1]      # (1, N, 3) 或 (1, N, K, 3)
+                opa_b   = global_opacities[b:b+1]   # (1, N)
+
+                # rank 内切分（并在函数内 squeeze 掉 batch 维）
+                pts_b, quat_b, scale_b, col_b, opa_b = self._dist_shard_gaussians(
+                    pts_b, quat_b, scale_b, col_b, opa_b
+                )
+
+                # 相机也去 batch 维（要求各 rank 相机数一致）
+                viewmats_b = viewmats[b]     # (S, 4, 4)
+                Ks_b       = intrinsics[b]   # (S, 3, 3)
+
+                # 分布式模式下不支持 batch 维：直接喂 (N,*) 与 (S,*,*)
+                r_b, a_b, m_b = rasterization(
+                    means=pts_b,
+                    quats=quat_b,
+                    scales=scale_b,
+                    sh_degree=sh_degree,
+                    colors=col_b,
+                    opacities=opa_b,
+                    viewmats=viewmats_b,
+                    Ks=Ks_b,
+                    height=H,
+                    width=W,
+                    packed=True,
+                    distributed=True,
+                )
+                # r_b 形状通常为 (S, H, W, 3)；收集起来后再堆叠回 B 维
+                renders_list.append(r_b)
+
+            renders = torch.stack(renders_list, dim=0)    # (B, S, H, W, 3)
+            outputs = renders.permute(0,1,4,2,3).contiguous()
         
         # for some training steps, save 3dgs checkpoints
         if step % 10000 == 0 and step != 0:
@@ -252,3 +319,45 @@ def save_ply(points, colors, filename):
     pcd.points = o3d.utility.Vector3dVector(points_visual.astype(np.float64))
     pcd.colors = o3d.utility.Vector3dVector(points_visual_rgb.astype(np.float64))
     o3d.io.write_point_cloud(filename, pcd, write_ascii=True)
+    
+def stabilize_sh(sh, sh_degree, hdr_max=10.0, make_dc_nonneg=True, tanh_cap_for_ac=True, eps=1e-8):
+    """
+    sh: (..., K, 3) with K=(L+1)^2, real SH coefficients per RGB channel.
+    返回与输入同shape的“安全版”SH系数。
+    """
+    L = sh_degree
+    K = (L + 1) ** 2
+    assert sh.shape[-2] == K and sh.shape[-1] == 3, f"expect (..., {(L+1)**2}, 3), got {tuple(sh.shape[-2:])}"
+
+    # 1) （可选）让 DC (l=0) 非负，避免负色主导（更稳）
+    if make_dc_nonneg:
+        dc = F.softplus(sh[..., :1, :], beta=2.0)  # >= 0
+    else:
+        dc = sh[..., :1, :]
+
+    ac = sh[..., 1:, :]  # l>0
+
+    # 2) （可选）先对 AC 做平滑截幅，抑制极端振铃（不会降低表达力太多）
+    if tanh_cap_for_ac:
+        # tanh 后幅度约在 (-1, 1)；再乘一个“温和”的尺度，防止一下子过亮
+        ac = torch.tanh(ac) * (0.5 * hdr_max)
+
+    sh = torch.cat([dc, ac], dim=-2)  # (..., K, 3)
+
+    # 3) 严格的范数上界：|c(ω)| ≤ ||a||2 * (L+1)/sqrt(4π)
+    cauchy = (L + 1) / math.sqrt(4.0 * math.pi)
+
+    # per-splat-per-channel 的 K 维 L2 范数
+    # 形状: (..., 3)
+    a_norm = torch.linalg.vector_norm(sh, dim=-2)  # over K
+
+    # 估计的方向最大值上界
+    max_dir = a_norm * cauchy  # (..., 3)
+
+    # 只在超过阈值时缩放（尺度不放大，只缩小）
+    scale = (hdr_max / (max_dir + eps)).clamp(max=1.0)  # (..., 3)
+
+    # 回写到 K 维（在 K 维广播）
+    sh_safe = sh * scale.unsqueeze(-2)
+
+    return sh_safe

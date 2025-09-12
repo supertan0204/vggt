@@ -5,7 +5,7 @@ exp_name: exp-9.8
 img_size: 518
 num_workers: 8
 seed_value: 42
-accum_steps: 4
+accum_steps: 1
 patch_size: 14
 
 limit_train_batches: 800
@@ -93,7 +93,7 @@ logging:
     train:
       keys_to_log:
         - objective
-        # - loss_camera
+        - loss_camera
         # - loss_T
         # - loss_R
         # - loss_FL
@@ -103,7 +103,7 @@ logging:
     val:
       keys_to_log:
         - objective
-        # - loss_camera
+        - loss_camera
         # - loss_T
         # - loss_R
         # - loss_FL
@@ -123,9 +123,9 @@ checkpoint:
 loss:
   _target_: training.loss.MultitaskLoss
   camera: 
-    weight: 5.0
+    weight: 1.0
     loss_type: "l1" # The paper uses smooth l1 loss, but we found l1 loss is more stable than smooth l1 and l2 loss.  
-    enable: False
+    enable: True
   depth:
     weight: 1.0
     gradient_loss_fn: "grad" 
@@ -153,7 +153,7 @@ optim:
 
   optimizer:
     _target_: torch.optim.AdamW
-    lr: 1e-4
+    lr: 5e-5
     weight_decay: 0.05
 
   frozen_module_names:
@@ -161,7 +161,6 @@ optim:
       - "*point_head*"
       - "*camera_head*"
       - "*depth_head*"
-      # - "*track_head*"
 
   amp:
     enabled: True
@@ -170,7 +169,7 @@ optim:
     _target_: training.train_utils.gradient_clip.GradientClipper
     configs:
       - module_name: ["aggregator"]
-        max_norm: 0.2   # feel free to reduce this if you see instabilities
+        max_norm: 0.1   # feel free to reduce this if you see instabilities
         norm_type: 2
       # - module_name: ["point"]
       #   max_norm: 1.0
@@ -215,8 +214,8 @@ model:
   enable_point: True
   enable_track: False
   debug: False
-  use_distributed_render: False
-  sh_degree: 2
+  use_distributed_render: False # this has bugs, please do not set true as this time 
+  sh_degree: 0
 
 distributed:
   # check https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html for options

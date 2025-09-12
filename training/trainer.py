@@ -969,8 +969,8 @@ class Trainer:
         y_hat_batch = {**y_hat, **loss_dict, **batch}
         
         # write images for visualization
-        B = batch["images"].shape[0]
-        S = batch["images"].shape[1]
+        # B = batch["images"].shape[0]
+        # S = batch["images"].shape[1]
         # import numpy as np
         # for b in range(B):
         #     for s in range(S):

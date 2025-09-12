@@ -145,7 +145,7 @@ class ComposedDataset(Dataset, ABC):
             "intrinsics": intrinsics,
             # "cam_points": cam_points,
             # "world_points": world_points,
-            # "point_masks": point_masks,
+            "point_masks": point_masks,
         }
 
         # --- Track Processing (if enabled) ---

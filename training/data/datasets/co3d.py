@@ -274,5 +274,5 @@ class Co3dDataset(BaseDataset):
             "point_masks": point_masks,
             "original_sizes": original_sizes,
         }
-        # print(f"image_paths: {image_paths}")
+
         return batch
