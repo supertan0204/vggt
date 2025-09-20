@@ -87,6 +87,7 @@ class MultitaskLoss(torch.nn.Module):
             w_perceptual = self.rendering.w_perceptual
             render_loss_dict = compute_render_loss(predictions, batch, w_mse, w_perceptual)
             render_loss = render_loss_dict['render_loss']
+            render_loss = render_loss * self.rendering["weight"]
             total_loss += render_loss
             loss_dict.update(render_loss_dict)
             

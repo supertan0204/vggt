@@ -5,7 +5,7 @@ exp_name: exp-9.8
 img_size: 518
 num_workers: 8
 seed_value: 42
-accum_steps: 1
+accum_steps: 1 
 patch_size: 14
 
 limit_train_batches: 800
@@ -94,6 +94,7 @@ logging:
       keys_to_log:
         - objective
         - loss_camera
+        - render_loss
         # - loss_T
         # - loss_R
         # - loss_FL
@@ -104,6 +105,7 @@ logging:
       keys_to_log:
         - objective
         - loss_camera
+        - render_loss
         # - loss_T
         # - loss_R
         # - loss_FL
@@ -123,9 +125,9 @@ checkpoint:
 loss:
   _target_: training.loss.MultitaskLoss
   camera: 
-    weight: 1.0
+    weight: 0.5
     loss_type: "l1" # The paper uses smooth l1 loss, but we found l1 loss is more stable than smooth l1 and l2 loss.  
-    enable: True
+    enable: False
   depth:
     weight: 1.0
     gradient_loss_fn: "grad" 
@@ -141,8 +143,9 @@ loss:
   track:
     enable: False  
   rendering: 
-    w_mse: 5.0 # the weight of mse loss
-    w_perceptual: 1.0 # the weight of perceptual loss
+    weight: 1.0
+    w_mse: 1.0 # the weight of mse loss
+    w_perceptual: 0.5 # the weight of perceptual loss
     enable: True
 
 
@@ -169,7 +172,7 @@ optim:
     _target_: training.train_utils.gradient_clip.GradientClipper
     configs:
       - module_name: ["aggregator"]
-        max_norm: 0.1   # feel free to reduce this if you see instabilities
+        max_norm: 0.3   # feel free to reduce this if you see instabilities
         norm_type: 2
       # - module_name: ["point"]
       #   max_norm: 1.0
@@ -181,7 +184,7 @@ optim:
       #   max_norm: 1.0   # feel free to reduce this if you see instabilities
       #   norm_type: 2
       - module_name: ["gs_head"]
-        max_norm: 0.3
+        max_norm: 0.5
         norm_type: 2
   options:
     lr:
@@ -190,16 +193,18 @@ optim:
           schedulers:
             - _target_: fvcore.common.param_scheduler.LinearParamScheduler
               start_value: 1e-8
-              end_value: 5e-5        # ↓ peak LR
+              end_value: 5e-5        # ↑ warmup 到 peak LR
             - _target_: fvcore.common.param_scheduler.CosineParamScheduler
               start_value: 5e-5
-              end_value: 1e-6        # ↑ higher floor to avoid near-zero LR
-          lengths: [0.10, 0.90]      # ↑ longer warmup (10%)
+              end_value: 1e-6        # ↓ 衰减到较高的 floor，避免过近 0
+          lengths: [0.10, 0.90]      # 10% warmup, 90% cosine decay
           interval_scaling: ['rescaled', 'rescaled']
     weight_decay:
       - scheduler:
           _target_: fvcore.common.param_scheduler.ConstantParamScheduler
-          value: 0.01                 # often stabler than 0.05 for AdamW
+          value: 0.01
+
+
 
 
 

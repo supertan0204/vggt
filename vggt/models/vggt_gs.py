@@ -13,6 +13,7 @@ from vggt.heads.track_head import TrackHead
 from vggt.utils.pose_enc import pose_encoding_to_extri_intri
 from training.gs_feature_parser import Parser_GS
 from vggt.utils.geometry import closed_form_inverse_se3
+from torch_scatter import scatter_add, scatter_max
 import math
 
 
@@ -108,32 +109,118 @@ class VGGT_GS(VGGT):
             predictions["renders"] = outputs
             predictions["original_images"] = images
             return predictions
-    def _dist_shard_gaussians(self, pts, quats, scales, colors, opacities):
-        # 约定形状：pts=(B, N, 3); quats=(B, N, 4); scales=(B, N, 3);
-        # colors=(B, N, K, 3) 或 (B, N, 3)（debug 情况）；opacities=(B, N)
-        assert pts.dim() == 3 and pts.size(1) > 0, "Expect pts shape [B, N, 3]"
-        world_size = dist.get_world_size()
-        rank = dist.get_rank()
-        N_total = pts.size(1)
-        # 等分 contiguous 切片（简单稳定且无额外开销）
-        start = (N_total * rank) // world_size
-        end   = (N_total * (rank + 1)) // world_size
-        sl = slice(start, end)
+    # def _dist_shard_gaussians(self, pts, quats, scales, colors, opacities):
+    #     # 约定形状：pts=(B, N, 3); quats=(B, N, 4); scales=(B, N, 3);
+    #     # colors=(B, N, K, 3) 或 (B, N, 3)（debug 情况）；opacities=(B, N)
+    #     assert pts.dim() == 3 and pts.size(1) > 0, "Expect pts shape [B, N, 3]"
+    #     world_size = dist.get_world_size()
+    #     rank = dist.get_rank()
+    #     N_total = pts.size(1)
+    #     # 等分 contiguous 切片（简单稳定且无额外开销）
+    #     start = (N_total * rank) // world_size
+    #     end   = (N_total * (rank + 1)) // world_size
+    #     sl = slice(start, end)
 
-        pts      = pts[:, sl, :]
-        quats    = quats[:, sl, :]
-        scales   = scales[:, sl, :]
-        opacities= opacities[:, sl]            # 注意你的代码里是 squeeze(-1) 过后的 (B, N)
-        # colors 既可能是 (B, N, 3) 也可能是 (B, N, K, 3)
-        if colors.dim() == 3:
-            colors = colors[:, sl, :]
-        elif colors.dim() == 4:
-            colors = colors[:, sl, :, :]
+    #     pts      = pts[:, sl, :]
+    #     quats    = quats[:, sl, :]
+    #     scales   = scales[:, sl, :]
+    #     opacities= opacities[:, sl]            # 注意你的代码里是 squeeze(-1) 过后的 (B, N)
+    #     # colors 既可能是 (B, N, 3) 也可能是 (B, N, K, 3)
+    #     if colors.dim() == 3:
+    #         colors = colors[:, sl, :]
+    #     elif colors.dim() == 4:
+    #         colors = colors[:, sl, :, :]
+    #     else:
+    #         raise ValueError("Unexpected colors shape")
+
+    #     return pts, quats, scales, colors, opacities
+    def voxelize_gaussians(self, points, gs_features, gs_conf, voxel_size=0.002):
+        """
+        Differentiable(ish) voxelization with batch isolation.
+
+        Inputs:
+            points:      [B, S, H, W, 3]
+            gs_features: [B, S, H, W, F]
+            gs_conf:     [B, S, H, W, 1] or None
+            voxel_size:  float or (3,) Tensor
+
+        Returns:
+            voxel_points:   [B, M, 3]   (0 padded where invalid)
+            voxel_features: [B, M, F]   (0 padded where invalid)
+        """
+        assert points.dim() == 5 and points.size(-1) == 3
+        assert gs_features.dim() == 5
+        assert (gs_conf is None) or (gs_conf.dim() == 5 and gs_conf.size(-1) == 1)
+
+        B, S, H, W, _ = points.shape
+        F = gs_features.size(-1)
+        device, dtype = points.device, points.dtype
+
+        # flatten all gaussians across S,H, W
+        N_total = B * S * H * W
+        pts_flat   = points.reshape(N_total, 3).to(dtype)
+        feats_flat = gs_features.reshape(N_total, F).to(dtype)
+        if gs_conf is None:
+            conf_flat = torch.zeros(N_total, device=device, dtype=dtype)
         else:
-            raise ValueError("Unexpected colors shape")
+            conf_flat = gs_conf.reshape(N_total)
 
-        return pts, quats, scales, colors, opacities
+        # voxel indices
+        if isinstance(voxel_size, (float, int)):
+            voxel_size = torch.tensor([voxel_size, voxel_size, voxel_size],
+                                    device=device, dtype=dtype)
+        else:
+            voxel_size = torch.as_tensor(voxel_size, device=device, dtype=dtype)
+            assert voxel_size.numel() == 3
 
+        vox_coords = torch.round(pts_flat / voxel_size).to(torch.int64)  # [N,3]
+
+        # ---- batch isolation: key = [batch_id, vx, vy, vz] ----
+        batch_ids = torch.arange(B, device=device, dtype=torch.long).repeat_interleave(S*H*W)
+        voxel_keys = torch.cat([batch_ids.unsqueeze(1), vox_coords], dim=1)  # [N,4]
+
+        # unique voxels across all batches (but tagged with batch id)
+        uniq_keys, inverse, counts = torch.unique(
+            voxel_keys, dim=0, return_inverse=True, return_counts=True
+        )  # uniq_keys: [M_total,4], inverse:[N]
+        M_total = uniq_keys.size(0)
+        uniq_batch = uniq_keys[:, 0]  # [M_total]
+
+        # softmax within each voxel (numerically stable)
+        vmax, _   = scatter_max(conf_flat, inverse, dim=0)               # [M_total]
+        conf_exp  = torch.exp(conf_flat - vmax[inverse])                 # [N]
+        denom     = scatter_add(conf_exp, inverse, dim=0) + 1e-12        # [M_total]
+        weights   = (conf_exp / denom[inverse]).unsqueeze(1)             # [N,1]
+
+        # weighted aggregation per voxel
+        voxel_pts_sum   = scatter_add(pts_flat   * weights, inverse, dim=0)  # [M_total,3]
+        voxel_feats_sum = scatter_add(feats_flat * weights, inverse, dim=0)  # [M_total,F]
+
+        # ---- pack back to [B, M, *] with light padding (tiny O(B) loop) ----
+        # how many voxels per batch
+        per_b_counts = torch.bincount(uniq_batch, minlength=B)           # [B]
+        M = int(per_b_counts.max().item())                               # padded length
+
+        voxel_points   = pts_flat.new_zeros((B, M, 3))
+        voxel_features = feats_flat.new_zeros((B, M, F))
+        # valid_mask   = torch.zeros((B, M), dtype=torch.bool, device=device)
+
+        start = 0
+        for b in range(B):
+            n = int(per_b_counts[b].item())
+            if n == 0: 
+                continue
+            sel = (uniq_batch == b)
+            # slicing once per batch keeps it fast and avoids Python loops over N
+            pts_b   = voxel_pts_sum[sel]
+            feats_b = voxel_feats_sum[sel]
+            voxel_points[b, :n]   = pts_b
+            voxel_features[b, :n] = feats_b
+            # valid_mask[b, :n] = True
+            start += n
+
+        return voxel_points, voxel_features
+    
     def _render_gs(self, predictions: dict, images: torch.Tensor, step: int):
         """
         Render 3DGS image based on model predictions.
@@ -143,41 +230,44 @@ class VGGT_GS(VGGT):
         
         # parse gs features
         gs_features = predictions["gs_features"] # B,S,H,W,-1
-        gs_conf = torch.sigmoid(predictions["gs_conf"]).unsqueeze(-1) # B,S,H,W,1
+        # gs_conf = torch.sigmoid(predictions["gs_conf"]).unsqueeze(-1) # B,S,H,W,1
+        gs_conf = predictions["gs_conf"].unsqueeze(-1) # B,S,H,W,1
         points = predictions["world_points"] # B,S,H,W,3
         B,S,H,W,_ = gs_features.shape
         original_colors = images.permute(0,1,3,4,2).reshape(B,-1,3)
+        
+        # print(f"num before voxelization: {S*H*W}")
+        global_points, gs_features = self.voxelize_gaussians(points, gs_features, gs_conf)
+        # print(f"num after voxelization: {global_points.shape[1]}")
+        
         # # soft filter gs features
         # conf_threshold = torch.mean(gs_conf, dim=[2,3]).view(B,S,1,1,1) # B,S,1,1,1
         # sharp_factor = 10.0
         # soft_mask = torch.sigmoid(sharp_factor*(gs_conf - conf_threshold)) * torch.sigmoid(sharp_factor*(gs_conf - 0.1))
         # gs_features = gs_features * soft_mask
         
-        
-        
         # feature extraction
         scale_factor = 1e-3
         Kx3 = (self.sh_degree + 1)**2 * 3
-        sh_coeffs = gs_features[..., :Kx3].reshape(B,S,H,W,Kx3//3,3)
+        sh_coeffs = gs_features[..., :Kx3].reshape(B,-1,Kx3//3,3)
         
-        sh = sh_coeffs.reshape(B,-1,Kx3//3,3)
-        # sh_safe = stabilize_sh(sh_, sh_degree=self.sh_degree, hdr_max=6.0,
-        #                make_dc_nonneg=True, tanh_cap_for_ac=True)
-        
-        
-        scales = torch.clamp(self.spls(gs_features[..., Kx3:Kx3+3])*scale_factor,max=0.5)
-        quats = gs_features[..., Kx3+3:Kx3+7]
-        opacities = torch.sigmoid(gs_features[..., -1:])
+        global_colors = sh_coeffs
+        global_scales = torch.clamp(self.spls(gs_features[..., Kx3:Kx3+3])*scale_factor,max=0.5)
+        global_quats = gs_features[..., Kx3+3:Kx3+7]
+        global_opacities = torch.sigmoid(gs_features[..., -1:])
         
         # put predictions of each frame together for one scene
-        global_points = points.reshape(B,S*H*W,3)
-        global_quats = quats.reshape(B,S*H*W,4)
-        global_scales = scales.reshape(B,S*H*W,3)
-        # global_colors = original_colors if self.debug else sh_coeffs.reshape(B, S*H*W, Kx3//3, 3)
-        global_colors = (original_colors if self.debug
-                 else sh)  # shape: (B, N, K, 3)
-        global_opacities = opacities.reshape(B,S*H*W,1).squeeze(-1)
+        # global_points = points.reshape(B,S*H*W,3)
+        # global_quats = quats.reshape(B,S*H*W,4)
+        # global_scales = scales.reshape(B,S*H*W,3)
+        # global_colors = (original_colors if self.debug
+                #  else sh)  # shape: (B, N, K, 3)
+        # global_opacities = opacities.reshape(B,S*H*W,1).squeeze(-1)
+        # global_conf = gs_conf.reshape(B,S*H*W,1)
         sh_degree = self.sh_degree if not self.debug else None
+
+        
+        
         # Camera parameters
         pose_enc = predictions["pose_enc"]
         extrinsics, intrinsics = pose_encoding_to_extri_intri(pose_enc, image_size_hw=images.shape[-2:]) # extrinsics: BxSx3x4, intrinsics: BxSx3x3   
@@ -207,7 +297,6 @@ class VGGT_GS(VGGT):
                 global_points, global_quats, global_scales, global_colors, global_opacities
             )
             
-        
         if not self.use_distributed_render:
             renders, alphas, meta = rasterization(
                 means=global_points,
@@ -215,7 +304,7 @@ class VGGT_GS(VGGT):
                 scales=global_scales,
                 sh_degree=sh_degree,
                 colors=global_colors,
-                opacities=global_opacities,
+                opacities=global_opacities.squeeze(-1),
                 viewmats=viewmats,
                 Ks=intrinsics,
                 height=H,
@@ -303,7 +392,6 @@ class VGGT_GS(VGGT):
         return outputs
     
 
-
 def save_ply(points, colors, filename):
     import open3d as o3d   
     import numpy as np             
@@ -320,44 +408,3 @@ def save_ply(points, colors, filename):
     pcd.colors = o3d.utility.Vector3dVector(points_visual_rgb.astype(np.float64))
     o3d.io.write_point_cloud(filename, pcd, write_ascii=True)
     
-def stabilize_sh(sh, sh_degree, hdr_max=10.0, make_dc_nonneg=True, tanh_cap_for_ac=True, eps=1e-8):
-    """
-    sh: (..., K, 3) with K=(L+1)^2, real SH coefficients per RGB channel.
-    返回与输入同shape的“安全版”SH系数。
-    """
-    L = sh_degree
-    K = (L + 1) ** 2
-    assert sh.shape[-2] == K and sh.shape[-1] == 3, f"expect (..., {(L+1)**2}, 3), got {tuple(sh.shape[-2:])}"
-
-    # 1) （可选）让 DC (l=0) 非负，避免负色主导（更稳）
-    if make_dc_nonneg:
-        dc = F.softplus(sh[..., :1, :], beta=2.0)  # >= 0
-    else:
-        dc = sh[..., :1, :]
-
-    ac = sh[..., 1:, :]  # l>0
-
-    # 2) （可选）先对 AC 做平滑截幅，抑制极端振铃（不会降低表达力太多）
-    if tanh_cap_for_ac:
-        # tanh 后幅度约在 (-1, 1)；再乘一个“温和”的尺度，防止一下子过亮
-        ac = torch.tanh(ac) * (0.5 * hdr_max)
-
-    sh = torch.cat([dc, ac], dim=-2)  # (..., K, 3)
-
-    # 3) 严格的范数上界：|c(ω)| ≤ ||a||2 * (L+1)/sqrt(4π)
-    cauchy = (L + 1) / math.sqrt(4.0 * math.pi)
-
-    # per-splat-per-channel 的 K 维 L2 范数
-    # 形状: (..., 3)
-    a_norm = torch.linalg.vector_norm(sh, dim=-2)  # over K
-
-    # 估计的方向最大值上界
-    max_dir = a_norm * cauchy  # (..., 3)
-
-    # 只在超过阈值时缩放（尺度不放大，只缩小）
-    scale = (hdr_max / (max_dir + eps)).clamp(max=1.0)  # (..., 3)
-
-    # 回写到 K 维（在 K 维广播）
-    sh_safe = sh * scale.unsqueeze(-2)
-
-    return sh_safe
