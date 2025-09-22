@@ -155,71 +155,41 @@ class VGGT_GS(VGGT):
         B, S, H, W, _ = points.shape
         F = gs_features.size(-1)
         device, dtype = points.device, points.dtype
-
-        # flatten all gaussians across S,H, W
-        N_total = B * S * H * W
-        pts_flat   = points.reshape(N_total, 3).to(dtype)
-        feats_flat = gs_features.reshape(N_total, F).to(dtype)
-        if gs_conf is None:
-            conf_flat = torch.zeros(N_total, device=device, dtype=dtype)
-        else:
-            conf_flat = gs_conf.reshape(N_total)
-
-        # voxel indices
-        if isinstance(voxel_size, (float, int)):
-            voxel_size = torch.tensor([voxel_size, voxel_size, voxel_size],
-                                    device=device, dtype=dtype)
-        else:
-            voxel_size = torch.as_tensor(voxel_size, device=device, dtype=dtype)
-            assert voxel_size.numel() == 3
-
-        vox_coords = torch.round(pts_flat / voxel_size).to(torch.int64)  # [N,3]
-
-        # ---- batch isolation: key = [batch_id, vx, vy, vz] ----
-        batch_ids = torch.arange(B, device=device, dtype=torch.long).repeat_interleave(S*H*W)
-        voxel_keys = torch.cat([batch_ids.unsqueeze(1), vox_coords], dim=1)  # [N,4]
-
-        # unique voxels across all batches (but tagged with batch id)
-        uniq_keys, inverse, counts = torch.unique(
-            voxel_keys, dim=0, return_inverse=True, return_counts=True
-        )  # uniq_keys: [M_total,4], inverse:[N]
-        M_total = uniq_keys.size(0)
-        uniq_batch = uniq_keys[:, 0]  # [M_total]
-
-        # softmax within each voxel (numerically stable)
-        vmax, _   = scatter_max(conf_flat, inverse, dim=0)               # [M_total]
-        conf_exp  = torch.exp(conf_flat - vmax[inverse])                 # [N]
-        denom     = scatter_add(conf_exp, inverse, dim=0) + 1e-12        # [M_total]
-        weights   = (conf_exp / denom[inverse]).unsqueeze(1)             # [N,1]
-
-        # weighted aggregation per voxel
-        voxel_pts_sum   = scatter_add(pts_flat   * weights, inverse, dim=0)  # [M_total,3]
-        voxel_feats_sum = scatter_add(feats_flat * weights, inverse, dim=0)  # [M_total,F]
-
-        # ---- pack back to [B, M, *] with light padding (tiny O(B) loop) ----
-        # how many voxels per batch
-        per_b_counts = torch.bincount(uniq_batch, minlength=B)           # [B]
-        M = int(per_b_counts.max().item())                               # padded length
-
-        voxel_points   = pts_flat.new_zeros((B, M, 3))
-        voxel_features = feats_flat.new_zeros((B, M, F))
-        # valid_mask   = torch.zeros((B, M), dtype=torch.bool, device=device)
-
-        start = 0
-        for b in range(B):
-            n = int(per_b_counts[b].item())
-            if n == 0: 
-                continue
-            sel = (uniq_batch == b)
-            # slicing once per batch keeps it fast and avoids Python loops over N
-            pts_b   = voxel_pts_sum[sel]
-            feats_b = voxel_feats_sum[sel]
-            voxel_points[b, :n]   = pts_b
-            voxel_features[b, :n] = feats_b
-            # valid_mask[b, :n] = True
-            start += n
-
+        
+        points_flatten = points.flatten(0,3) # [N,3] N is the num of gaussians
+        voxel_indices = (points_flatten / voxel_size).round().int() # [N,3]
+        unique_voxels, inverse_indices, counts = torch.unique(
+            voxel_indices, dim=0, return_inverse=True, return_counts=True
+        ) # obtain unique voxel coordinates
+        
+        conf_flat = gs_conf.flatten() # [N]
+        gs_features_flat = gs_features.flatten(0,3) # [N,3]
+        
+        # Compute softmax weights per voxel
+        conf_voxel_max, _ = scatter_max(conf_flat, inverse_indices, dim=0) # the max conf of gs within each voxel, [num_unique_voxels]
+        conf_exp = torch.exp(conf_flat - conf_voxel_max[inverse_indices])
+        voxel_weights = scatter_add(
+            conf_exp, inverse_indices, dim=0
+        ) # [num_unique_voxels]
+        eps = 1e-6
+        weights = (conf_exp / (voxel_weights[inverse_indices]) + eps).unsqueeze(-1) # [N,1]
+        
+        # Compute weighted avg of positions and features
+        weighted_points = points_flatten * weights
+        weighted_features = gs_features_flat.squeeze(1) * weights
+        
+        # Aggregate per voxel
+        voxel_points = scatter_add(
+            weighted_points, inverse_indices, dim=0
+        ) # [num_unique_voxels, 3]
+        voxel_features = scatter_add(
+            weighted_features, inverse_indices, dim=0
+        )
+        
         return voxel_points, voxel_features
+        
+        
+        
     
     def _render_gs(self, predictions: dict, images: torch.Tensor, step: int):
         """
