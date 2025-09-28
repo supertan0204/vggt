@@ -14,7 +14,8 @@ from vggt.utils.pose_enc import pose_encoding_to_extri_intri
 from training.gs_feature_parser import Parser_GS
 from vggt.utils.geometry import closed_form_inverse_se3
 from torch_scatter import scatter_add, scatter_max
-import math
+import matplotlib.pyplot as plt
+import os
 
 
 from gsplat.rendering import rasterization
@@ -24,8 +25,6 @@ from gsplat import export_splats
 
 class VGGT_GS(VGGT):
     def __init__(self,
-                #  img_size=518, 
-                #  patch_size=14,
                 sh_degree=1, 
                 embed_dim=1024,
                 enable_camera=True,
@@ -51,6 +50,7 @@ class VGGT_GS(VGGT):
                          enable_point=enable_point,
                          enable_track=enable_track,
                          )  # Pass embed_dim to the parent class
+        
         self.debug = debug
         self.use_distributed_render = use_distributed_render
         self.sh_degree = sh_degree
@@ -79,9 +79,10 @@ class VGGT_GS(VGGT):
         if query_points is not None and len(query_points.shape) == 2:
             query_points = query_points.unsqueeze(0)
 
-        aggregated_tokens_list, patch_start_idx = self.aggregator(images) # [(B x S x P x 2C) x L], 1 + num_register_tokens
+        aggregated_tokens_list, frame_attn_list, global_attn_list, patch_start_idx = self.aggregator(images) # [(B x S x P x 2C) x L], 1 + num_register_tokens
+        visualize_global_attn_map(global_attn_list, "./saving/global_attn.png")
+        # import pdb;pdb.set_trace()
         # 上面2C是因为一个存frame(local)的embed，一个存global的embed
-
         predictions = {}
 
         with torch.amp.autocast("cuda", enabled=False):
@@ -109,31 +110,7 @@ class VGGT_GS(VGGT):
             predictions["renders"] = outputs
             predictions["original_images"] = images
             return predictions
-    # def _dist_shard_gaussians(self, pts, quats, scales, colors, opacities):
-    #     # 约定形状：pts=(B, N, 3); quats=(B, N, 4); scales=(B, N, 3);
-    #     # colors=(B, N, K, 3) 或 (B, N, 3)（debug 情况）；opacities=(B, N)
-    #     assert pts.dim() == 3 and pts.size(1) > 0, "Expect pts shape [B, N, 3]"
-    #     world_size = dist.get_world_size()
-    #     rank = dist.get_rank()
-    #     N_total = pts.size(1)
-    #     # 等分 contiguous 切片（简单稳定且无额外开销）
-    #     start = (N_total * rank) // world_size
-    #     end   = (N_total * (rank + 1)) // world_size
-    #     sl = slice(start, end)
 
-    #     pts      = pts[:, sl, :]
-    #     quats    = quats[:, sl, :]
-    #     scales   = scales[:, sl, :]
-    #     opacities= opacities[:, sl]            # 注意你的代码里是 squeeze(-1) 过后的 (B, N)
-    #     # colors 既可能是 (B, N, 3) 也可能是 (B, N, K, 3)
-    #     if colors.dim() == 3:
-    #         colors = colors[:, sl, :]
-    #     elif colors.dim() == 4:
-    #         colors = colors[:, sl, :, :]
-    #     else:
-    #         raise ValueError("Unexpected colors shape")
-
-    #     return pts, quats, scales, colors, opacities
     def voxelize_gaussians(self, points, gs_features, gs_conf, voxel_size=0.002):
         """
         Differentiable(ish) voxelization with batch isolation.
@@ -361,6 +338,29 @@ class VGGT_GS(VGGT):
 
         return outputs
     
+
+def visualize_global_attn_map(global_attn_list: list, save_path: str):
+    # global_attn_list is a list contains None or attention map tensor with shape [B, S*P, S*P] where P is the number of tokens within each image
+    # keep only (B,P,P) tensors
+    valid = [t for t in global_attn_list if t is not None]
+    if not valid:
+        raise ValueError("No valid attention maps.")
+
+    # concat along batch and average -> (P,P)
+    cat = torch.cat([t.detach().float().cpu() for t in valid], dim=0)  # (sum_B, P, P)
+    mean_map = cat.mean(dim=0)  # (P, P)
+
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+    plt.imshow(mean_map.numpy(), interpolation="nearest")
+    plt.colorbar()
+    plt.axis("off")
+    plt.savefig(save_path, dpi=200, bbox_inches="tight")
+    plt.close()
+
+    return mean_map  # (P, P)
+    
+
+
 
 def save_ply(points, colors, filename):
     import open3d as o3d   

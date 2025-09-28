@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
+from sympy.assumptions import global_assumptions
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -68,6 +69,7 @@ class Aggregator(nn.Module):
         qk_norm=True,
         rope_freq=100,
         init_values=0.01,
+        visualize_attn_blocks=[14,23],
     ):
         super().__init__()
 
@@ -139,6 +141,8 @@ class Aggregator(nn.Module):
             self.register_buffer(name, torch.FloatTensor(value).view(1, 1, 3, 1, 1), persistent=False)
 
         self.use_reentrant = False # hardcoded to False
+        
+        self.visualize_attn_blocks = visualize_attn_blocks
 
     def __build_patch_embed__(
         self,
@@ -233,30 +237,44 @@ class Aggregator(nn.Module):
         frame_idx = 0
         global_idx = 0
         output_list = []
+        frame_attn_list = []
+        global_attn_list = []
 
-        for _ in range(self.aa_block_num):
+        for block in range(self.aa_block_num):
+            # specify attention map visualization for specific blocks
+            if block in self.visualize_attn_blocks:
+                enable_attn_capture_on_block(self.global_blocks[block], True)
+                enable_attn_capture_on_block(self.frame_blocks[block], True)
             for attn_type in self.aa_order:
                 if attn_type == "frame":
-                    tokens, frame_idx, frame_intermediates = self._process_frame_attention(
+                    tokens, frame_idx, frame_intermediates, frame_attn = self._process_frame_attention(
                         tokens, B, S, P, C, frame_idx, pos=pos
                     )
                 elif attn_type == "global":
-                    tokens, global_idx, global_intermediates = self._process_global_attention(
+                    tokens, global_idx, global_intermediates, global_attn = self._process_global_attention(
                         tokens, B, S, P, C, global_idx, pos=pos
                     )
                 else:
-                    raise ValueError(f"Unknown attention type: {attn_type}")
-
+                    raise ValueError(f"Unknown attention type: {attn_type}")    
             for i in range(len(frame_intermediates)):
                 # concat frame and global intermediates, [B x S x P x 2C]
                 concat_inter = torch.cat([frame_intermediates[i], global_intermediates[i]], dim=-1)
                 output_list.append(concat_inter)
+            frame_attn_list.append(frame_attn)
+            global_attn_list.append(global_attn)
+            
+                
 
         del concat_inter
         del frame_intermediates
         del global_intermediates
-        return output_list, self.patch_start_idx
-
+        del frame_attn
+        del global_attn
+        return output_list, frame_attn_list, global_attn_list, self.patch_start_idx
+    
+    
+    
+      
     def _process_frame_attention(self, tokens, B, S, P, C, frame_idx, pos=None):
         """
         Process frame attention blocks. We keep tokens in shape (B*S, P, C).
@@ -269,17 +287,20 @@ class Aggregator(nn.Module):
             pos = pos.view(B, S, P, 2).view(B * S, P, 2)
 
         intermediates = []
-
+        attn_for_visualization = []
+        
         # by default, self.aa_block_size=1, which processes one block at a time
         for _ in range(self.aa_block_size):
             if self.training:
                 tokens = checkpoint(self.frame_blocks[frame_idx], tokens, pos, use_reentrant=self.use_reentrant)
             else:
                 tokens = self.frame_blocks[frame_idx](tokens, pos=pos)
+            last_attn = get_last_attn_from_block(self.frame_blocks[frame_idx]) # [B*S, P, P]
             frame_idx += 1
             intermediates.append(tokens.view(B, S, P, C))
+            # attn_for_visualization.append(last_attn)
 
-        return tokens, frame_idx, intermediates
+        return tokens, frame_idx, intermediates, last_attn
 
     def _process_global_attention(self, tokens, B, S, P, C, global_idx, pos=None):
         """
@@ -292,6 +313,7 @@ class Aggregator(nn.Module):
             pos = pos.view(B, S, P, 2).view(B, S * P, 2)
 
         intermediates = []
+        attn_for_visualization = []
 
         # by default, self.aa_block_size=1, which processes one block at a time
         for _ in range(self.aa_block_size):
@@ -299,12 +321,21 @@ class Aggregator(nn.Module):
                 tokens = checkpoint(self.global_blocks[global_idx], tokens, pos, use_reentrant=self.use_reentrant)
             else:
                 tokens = self.global_blocks[global_idx](tokens, pos=pos)
+            last_attn = get_last_attn_from_block(self.global_blocks[global_idx]) # [B, S*P, S*P]
             global_idx += 1
             intermediates.append(tokens.view(B, S, P, C))
+            # attn_for_visualization.append(last_attn)
 
-        return tokens, global_idx, intermediates
+        return tokens, global_idx, intermediates, last_attn
 
-
+def enable_attn_capture_on_block(block, on: bool = True):
+        if hasattr(block, "attn") and hasattr(block.attn, "capture_attn"):
+            block.attn.capture_attn = on
+    
+def get_last_attn_from_block(block):
+    if hasattr(block, "attn") and getattr(block.attn, "last_attn", None) is not None:
+        return block.attn.last_attn   # [B, H, N, N]
+    return None
 def slice_expand_and_flatten(token_tensor, B, S):
     """
     Processes specialized tokens with shape (1, 2, X, C) for multi-frame processing:

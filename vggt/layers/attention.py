@@ -31,6 +31,8 @@ class Attention(nn.Module):
         qk_norm: bool = False,
         fused_attn: bool = True,  # use F.scaled_dot_product_attention or not
         rope=None,
+        capture_attn: bool = False, # whether to capture attention
+        last_attn: Tensor | None = None
     ) -> None:
         super().__init__()
         assert dim % num_heads == 0, "dim should be divisible by num_heads"
@@ -46,6 +48,8 @@ class Attention(nn.Module):
         self.proj = nn.Linear(dim, dim, bias=proj_bias)
         self.proj_drop = nn.Dropout(proj_drop)
         self.rope = rope
+        self.capture_attn = capture_attn
+        self.last_attn = last_attn
 
     def forward(self, x: Tensor, pos=None) -> Tensor:
         B, N, C = x.shape
@@ -56,15 +60,23 @@ class Attention(nn.Module):
         if self.rope is not None:
             q = self.rope(q, pos)
             k = self.rope(k, pos)
-
-        if self.fused_attn:
-            x = F.scaled_dot_product_attention(q, k, v, dropout_p=self.attn_drop.p if self.training else 0.0)
-        else:
-            q = q * self.scale
-            attn = q @ k.transpose(-2, -1)
+        
+        if self.capture_attn:
+            q_scaled = q * self.scale
+            attn = q_scaled @ k.transpose(-2, -1)        # [B, H, N, N]
             attn = attn.softmax(dim=-1)
+            self.last_attn = attn.detach().mean(dim=1)   # [B, N, N], eliminate the head dimension           
             attn = self.attn_drop(attn)
-            x = attn @ v
+            x = attn @ v                                 # [B, H, N, D]
+        else: 
+            if self.fused_attn:
+                x = F.scaled_dot_product_attention(q, k, v, dropout_p=self.attn_drop.p if self.training else 0.0)
+            else:
+                q = q * self.scale
+                attn = q @ k.transpose(-2, -1)
+                attn = attn.softmax(dim=-1)
+                attn = self.attn_drop(attn)
+                x = attn @ v
 
         x = x.transpose(1, 2).reshape(B, N, C)
         x = self.proj(x)
