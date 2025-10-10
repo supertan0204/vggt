@@ -15,6 +15,10 @@ from training.gs_feature_parser import Parser_GS
 from vggt.utils.geometry import closed_form_inverse_se3
 from torch_scatter import scatter_add, scatter_max
 import matplotlib.pyplot as plt
+from matplotlib.cm import get_cmap
+from matplotlib.colors import Normalize
+from matplotlib.cm import ScalarMappable
+import numpy as np
 import os
 
 
@@ -79,9 +83,9 @@ class VGGT_GS(VGGT):
         if query_points is not None and len(query_points.shape) == 2:
             query_points = query_points.unsqueeze(0)
 
-        aggregated_tokens_list, frame_attn_list, global_attn_list, patch_start_idx = self.aggregator(images) # [(B x S x P x 2C) x L], 1 + num_register_tokens
-        visualize_global_attn_map(global_attn_list, "./saving/global_attn.png")
-        # import pdb;pdb.set_trace()
+        aggregated_tokens_list, frame_attn_list, global_attn_list, patch_start_idx, special_tokens = self.aggregator(images) # [(B x S x P x 2C) x L], 1 + num_register_tokens
+        visualize_global_attn_map(global_attn_list, special_tokens, "./saving/global_attn.png")
+        import pdb;pdb.set_trace()
         # 上面2C是因为一个存frame(local)的embed，一个存global的embed
         predictions = {}
 
@@ -339,25 +343,40 @@ class VGGT_GS(VGGT):
         return outputs
     
 
-def visualize_global_attn_map(global_attn_list: list, save_path: str):
-    # global_attn_list is a list contains None or attention map tensor with shape [B, S*P, S*P] where P is the number of tokens within each image
-    # keep only (B,P,P) tensors
-    valid = [t for t in global_attn_list if t is not None]
+def visualize_global_attn_map(attn_list, special_indices, save_path, cmap="viridis"):
+    valid = [t for t in attn_list if t is not None]
     if not valid:
         raise ValueError("No valid attention maps.")
-
-    # concat along batch and average -> (P,P)
     cat = torch.cat([t.detach().float().cpu() for t in valid], dim=0)  # (sum_B, P, P)
-    mean_map = cat.mean(dim=0)  # (P, P)
+    mean_map = cat.mean(dim=0)                                         # (P, P)
+    P = mean_map.shape[0]
 
+    if isinstance(special_indices, torch.Tensor):
+        special_indices = special_indices.flatten().tolist()
+    special_indices = [int(i) for i in (special_indices or []) if 0 <= int(i) < P]
+
+    arr = mean_map.numpy()
+    norm = Normalize(vmin=float(arr.min()), vmax=float(arr.max()))
+    fig, ax = plt.subplots()
+    im = ax.imshow(arr, interpolation="nearest", cmap=cmap, norm=norm)
+    ax.axis("on")
+
+    # annotate special rows/cols on the axes (outside the image)
+    if special_indices:
+        ax.set_xticks(special_indices)
+        ax.set_yticks(special_indices)
+        ax.set_xticklabels(["S"] * len(special_indices), color="red")
+        ax.set_yticklabels(["S"] * len(special_indices), color="red")
+        ax.tick_params(axis='both', which='major', labelsize=8, length=4, colors="red")
+    else:
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+    plt.colorbar(ScalarMappable(norm=norm, cmap=get_cmap(cmap)), ax=ax, fraction=0.046, pad=0.04)
     os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
-    plt.imshow(mean_map.numpy(), interpolation="nearest")
-    plt.colorbar()
-    plt.axis("off")
     plt.savefig(save_path, dpi=200, bbox_inches="tight")
-    plt.close()
-
-    return mean_map  # (P, P)
+    plt.close(fig)
+    return mean_map
     
 
 

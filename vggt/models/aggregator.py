@@ -69,7 +69,7 @@ class Aggregator(nn.Module):
         qk_norm=True,
         rope_freq=100,
         init_values=0.01,
-        visualize_attn_blocks=[14,23],
+        visualize_attn_blocks=[15],
     ):
         super().__init__()
 
@@ -210,12 +210,11 @@ class Aggregator(nn.Module):
 
         if isinstance(patch_tokens, dict):
             patch_tokens = patch_tokens["x_norm_patchtokens"]
-
-        _, P, C = patch_tokens.shape
+        _, P, C = patch_tokens.shape 
 
         # Expand camera and register tokens to match batch size and sequence length
-        camera_token = slice_expand_and_flatten(self.camera_token, B, S)
-        register_token = slice_expand_and_flatten(self.register_token, B, S)
+        camera_token = slice_expand_and_flatten(self.camera_token, B, S) # see the docstring of this function to see how it deal with the token for first frame and the rest frames
+        register_token = slice_expand_and_flatten(self.register_token, B, S) # actually use the first initialized token for first frame onlyl, and the second initialized token for the rest frames
 
         # Concatenate special tokens with patch tokens
         tokens = torch.cat([camera_token, register_token, patch_tokens], dim=1)
@@ -232,7 +231,8 @@ class Aggregator(nn.Module):
             pos = torch.cat([pos_special, pos], dim=1)
 
         # update P because we added special tokens
-        _, P, C = tokens.shape
+        _, P, C = tokens.shape # add 4 register tokens and 1 camera token
+        spectial_tokens = torch.arange(0, B*S*P, P)
 
         frame_idx = 0
         global_idx = 0
@@ -270,7 +270,7 @@ class Aggregator(nn.Module):
         del global_intermediates
         del frame_attn
         del global_attn
-        return output_list, frame_attn_list, global_attn_list, self.patch_start_idx
+        return output_list, frame_attn_list, global_attn_list, self.patch_start_idx, spectial_tokens
     
     
     

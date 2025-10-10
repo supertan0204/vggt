@@ -10,10 +10,7 @@ dtype = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.
 # This will automatically download the model weights the first time it's run, which may take a while.
 model = VGGT_GS.from_pretrained("facebook/VGGT-1B").to(device)
 model.eval()
-image_names = ["examples/kitchen/images/00.png", 
-               "examples/kitchen/images/01.png",  
-               "examples/kitchen/images/02.png",
-               "examples/kitchen/images/03.png"]
+image_names = [f"examples/kitchen/images/{i:02d}.png" for i in range(2)]
 images = load_and_preprocess_images(image_names).to(device)
 
 with torch.no_grad():
